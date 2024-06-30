@@ -1,6 +1,9 @@
 
 #include "python_script.h"
+#include "python_script_instance.h"
 #include "python_script_language.h"
+
+#include <iostream>
 
 Error PythonScript::load()
 {
@@ -28,7 +31,7 @@ Error PythonScript::load()
 
 bool PythonScript::can_instantiate() const
 {
-    return false;
+    return true;
 }
 
 
@@ -58,7 +61,8 @@ StringName PythonScript::get_instance_base_type() const
 
 ScriptInstance *PythonScript::instance_create(Object *p_this)
 {
-    return 0; // PythonScriptInstance
+    std::cout << "<PythonScript::instance_create>" << std::endl;
+    return memnew(PythonScriptInstance);
 }
 
 
@@ -82,6 +86,7 @@ String PythonScript::get_source_code() const
 
 void PythonScript::set_source_code(const String &p_code)
 {
+    this->source = p_code;
 }
 
 
@@ -107,12 +112,14 @@ String PythonScript::get_class_icon_path() const
 
 bool PythonScript::has_method(const StringName &p_method) const
 {
+    std::cout << "<PythonScript::has_method>" << std::endl;
     return false;
 }
 
 
 MethodInfo PythonScript::get_method_info(const StringName &p_method) const
 {
+    std::cout << "<PythonScript::get_method_info>" << std::endl;
     return MethodInfo();
 }    
 
@@ -142,12 +149,14 @@ ScriptLanguage *PythonScript::get_language() const {
 
 bool PythonScript::has_script_signal(const StringName &p_signal) const
 {
+    std::cout << "<PythonScript::has_script_signal>" << std::endl;
     return false;
 }
 
 
 void PythonScript::get_script_signal_list(List<MethodInfo> *r_list) const
 {
+    std::cout << "<PythonScript::get_script_signal_list>" << std::endl;
 }
 
 
@@ -158,17 +167,20 @@ PythonScript::get_property_default_value(
 )
 const
 {
+    std::cout << "<PythonScript::get_property_default_value>" << std::endl;
     return false;
 }
 
 
 void PythonScript::get_script_method_list(List<MethodInfo> *r_list) const
 {
+    std::cout << "<PythonScript::get_script_method_list>" << std::endl;
 }
 
 
 void PythonScript::get_script_property_list(List<PropertyInfo> *r_list) const
 {
+    std::cout << "<PythonScript::get_script_property_list>" << std::endl;
 }
 
 
