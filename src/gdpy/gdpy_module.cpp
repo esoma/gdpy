@@ -2,6 +2,11 @@
 #include "gdpy_module.h"
 #include <iostream>
 
+#include "core/object/class_db.h"
+#include "conversion.h"
+#include <vector>
+
+
 /* MetaPathFinder */
 typedef struct
 {
@@ -143,7 +148,101 @@ static PyModuleDef gdpy_module_def = {
     -1
 };
 
+static PyObject *
+class_db_get_method(PyObject *self, PyObject *args)
+{
+    PyObject *py_class_name;
+    PyObject *py_method_name;
+    if (!PyArg_ParseTuple(args, "UU", &py_class_name, &py_method_name))
+    {
+        return 0;
+    }
+    const char *class_name = PyUnicode_AsUTF8(py_class_name);
+    if (!class_name){ return 0; }
+    const char *method_name = PyUnicode_AsUTF8(py_method_name);
+    if (!method_name){ return 0; }
+    
+    auto method = ClassDB::get_method(class_name, method_name);
+    if (!method)
+    {
+        PyErr_Format(
+            PyExc_RuntimeError,
+            "%s.%s does not exist",
+            class_name,
+            method_name
+        );
+        return 0;
+    }
+    
+    return PyCapsule_New(method, "MethodBind", 0);
+}
 
+static PyObject *
+call_method_bind(PyObject *self, PyObject *args)
+{
+    PyObject *py_method_bind;
+    PyObject *py_instance;
+    PyObject *py_args;
+    if (!PyArg_ParseTuple(args, "OOO", &py_method_bind, &py_instance, &py_args))
+    {
+        return 0;
+    }
+    
+    auto arg_count = PySequence_Length(py_args);
+    if (arg_count == -1){ return 0; }
+
+    auto method_bind = (MethodBind *)PyCapsule_GetPointer(
+        py_method_bind,
+        "MethodBind"
+    );
+    if (!method_bind){ return 0; }
+    
+    std::vector<Variant> v_args(arg_count);
+    std::vector<const Variant*> v_argsp(arg_count);
+    for (Py_ssize_t i = 0; i < arg_count; i++)
+    {
+        v_argsp[i] = &v_args[i];
+        auto py_arg = PySequence_GetItem(py_args, i);
+        if (!py_arg){ return 0; }
+        auto conversion = pyobject_to_variant(py_arg, v_args[i]);
+        Py_DECREF(py_arg);
+        if (!conversion){ return 0; }
+    }
+
+    Callable::CallError error;
+    auto ret = method_bind->call(0, &v_argsp[0], arg_count, error);
+    switch(error.error)
+    {
+        case Callable::CallError::CALL_ERROR_INVALID_METHOD:
+            PyErr_Format(PyExc_TypeError, "invalid method");
+            return 0;
+        case Callable::CallError::CALL_ERROR_INVALID_ARGUMENT:
+            PyErr_Format(PyExc_TypeError, "invalid argument");
+            return 0;
+        case Callable::CallError::CALL_ERROR_TOO_MANY_ARGUMENTS:
+            PyErr_Format(PyExc_TypeError, "too many arguments");
+            return 0;
+        case Callable::CallError::CALL_ERROR_TOO_FEW_ARGUMENTS:
+            PyErr_Format(PyExc_TypeError, "too few arguments");
+            return 0;
+        case Callable::CallError::CALL_ERROR_INSTANCE_IS_NULL:
+            PyErr_Format(PyExc_TypeError, "instance is null");
+            return 0;
+        case Callable::CallError::CALL_ERROR_METHOD_NOT_CONST:
+            PyErr_Format(PyExc_TypeError, "method not const");
+            return 0;
+    }
+    
+    return variant_to_pyobject(ret);
+}
+
+static PyMethodDef gdpy_module_methods[] = {
+    {"class_db_get_method", (PyCFunction)class_db_get_method, METH_VARARGS},
+    {"call_method_bind", (PyCFunction)call_method_bind, METH_VARARGS},
+    {0}
+};
+
+/* initialization */
 int set_sys_output_stream(const char *name, std::ostream &stream)
 {
     auto sys_module = PyImport_ImportModule("sys");
@@ -206,6 +305,7 @@ PyMODINIT_FUNC PyInit__gdpy()
     if (PyType_Ready(&OutputStreamType) < 0){ return 0; }
     if (PyType_Ready(&MetaPathFinderType) < 0){ return 0; }
     
+    gdpy_module_def.m_methods = gdpy_module_methods;
     PyObject *module = PyModule_Create(&gdpy_module_def);
     if (!module){ return 0; }
     
