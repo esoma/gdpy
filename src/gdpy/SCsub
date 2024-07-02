@@ -1,8 +1,22 @@
 #!/usr/bin/env python
 
+import os
+
 Import("env")
 Import("env_modules")
+
+cpython = os.path.abspath("../../vendor/cpython/")
 
 env_gdpy = env_modules.Clone()
 
 env_gdpy.add_source_files(env.modules_sources, "*.cpp")
+env_gdpy["CPPPATH"].append(os.path.join(cpython, "Include"))
+
+if env.msvc:
+    env_gdpy.Append(
+        CPPPATH=[os.path.join(cpython, "PC")],
+    )
+    env.Append(
+        LINKFLAGS=["/LIBPATH:" + os.path.join(cpython, "PCbuild\\amd64")]
+    )
+    

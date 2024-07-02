@@ -9,6 +9,7 @@ class PythonScript : public Script
     
     String source;
     
+    Error import();
 public:
     Error load();
 

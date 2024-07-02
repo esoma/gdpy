@@ -1,9 +1,51 @@
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
 
 #include "python_script.h"
 #include "python_script_instance.h"
 #include "python_script_language.h"
 
 #include <iostream>
+
+Error PythonScript::import()
+{
+    std::cout << get_path().utf8().get_data() << std::endl;
+    /*
+    auto module = PyImport_ImportModule(get_path().utf8().get_data());
+    if (!module)
+    {
+        PyErr_Clear();
+        ERR_FAIL_V_MSG(FAILED, "script failed to execute");
+    }
+    */
+
+    auto chr_source = source.utf8();
+    
+    auto dict = PyDict_New();
+    if (!dict)
+    {
+        Py_DECREF(dict);
+        ERR_FAIL_V_MSG(FAILED, "failed to create PythonScript dict");
+    }
+    auto ret = PyRun_String(
+        chr_source.get_data(),
+        Py_file_input,
+        dict,
+        dict
+    );
+    if (!ret)
+    {
+        PyErr_Clear();
+        Py_DECREF(dict);
+        ERR_FAIL_V_MSG(FAILED, "script failed to execute");
+    }
+    Py_DECREF(ret);
+    
+    std::cout << "dict: " << PyUnicode_AsUTF8(PyObject_Str(dict)) << std::endl;
+    Py_DECREF(dict);
+
+    return OK;
+}
 
 Error PythonScript::load()
 {
@@ -25,8 +67,8 @@ Error PythonScript::load()
 	}
     
     this->source = s;
-    
-    return OK;
+
+    return import();
 }
 
 bool PythonScript::can_instantiate() const
@@ -92,6 +134,7 @@ void PythonScript::set_source_code(const String &p_code)
 
 Error PythonScript::reload(bool p_keep_state)
 {
+    std::cout << "<PythonScript::reload>" << std::endl;
     return OK;
 }
 

@@ -1,12 +1,16 @@
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
 
 #include "register_types.h"
 
+#include "gdpy_module.h"
 #include "python_resource_format_loader.h"
 #include "python_resource_format_saver.h"
 #include "python_script.h"
 #include "python_script_language.h"
 
 #include <iostream>
+#include <windows.h>
 
 Ref<PythonResourceFormatLoader> python_resource_format_loader;
 Ref<PythonResourceFormatSaver> python_resource_format_saver;
@@ -16,6 +20,19 @@ void initialize_gdpy_module(ModuleInitializationLevel p_level) {
     
     if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS)
     {
+        PyImport_AppendInittab("_gdpy", &PyInit__gdpy);
+        Py_Initialize();
+        {
+            auto gdpy_module = PyImport_ImportModule("_gdpy");
+            if (!gdpy_module)
+            {
+                std::cerr << "Failed to load _gdpy." << std::endl;
+                Py_FinalizeEx();
+                return;
+            }
+            Py_DECREF(gdpy_module);
+        }
+        
         GDREGISTER_CLASS(PythonScript);
 		auto python_script_language = memnew(PythonScriptLanguage);
 		ScriptServer::register_language(python_script_language);
@@ -40,6 +57,10 @@ void initialize_gdpy_module(ModuleInitializationLevel p_level) {
 }
 
 void uninitialize_gdpy_module(ModuleInitializationLevel p_level) {
+    if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS)
+    {
+        Py_FinalizeEx();
+    }
     /*
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS) {
 		ScriptServer::unregister_language(script_language_gd);
