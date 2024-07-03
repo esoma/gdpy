@@ -4,3 +4,6 @@
 [submodule "vendor/cpython"]
 	path = vendor/cpython
 	url = https://github.com/python/cpython.git
+[submodule "vendor/godot-cpp"]
+	path = vendor/godot-cpp
+	url = https://github.com/godotengine/godot-cpp.git
