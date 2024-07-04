@@ -4,6 +4,7 @@
 #include "python_script.h"
 #include "python_script_instance.h"
 #include "python_script_language.h"
+#include "python_gil.h"
 
 #include "core/io/file_access.h"
 
@@ -11,17 +12,7 @@
 
 Error PythonScript::import()
 {
-    /*
-    auto module = PyImport_ImportModule(get_path().utf8().get_data());
-    if (!module)
-    {
-        PyErr_Clear();
-        ERR_FAIL_V_MSG(FAILED, "script failed to execute");
-    }
-    */
-    
-    auto chr_source = source.utf8();
-    
+    PythonGil python_gil;
     auto dict = PyDict_New();
     if (!dict)
     {
@@ -29,7 +20,7 @@ Error PythonScript::import()
         ERR_FAIL_V_MSG(FAILED, "failed to create PythonScript dict");
     }
     auto ret = PyRun_String(
-        chr_source.get_data(),
+        source.utf8().get_data(),
         Py_file_input,
         dict,
         dict
@@ -41,8 +32,6 @@ Error PythonScript::import()
         ERR_FAIL_V_MSG(FAILED, "script failed to execute");
     }
     Py_DECREF(ret);
-    
-    //std::cout << "dict: " << PyUnicode_AsUTF8(PyObject_Str(dict)) << std::endl;
     Py_DECREF(dict);
 
     return OK;

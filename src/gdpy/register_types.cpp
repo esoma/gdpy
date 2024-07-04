@@ -12,6 +12,7 @@
 #include <iostream>
 #include <windows.h>
 
+PyThreadState *py_thread_state;
 PythonScriptLanguage *python_script_language = 0;
 Ref<PythonResourceFormatLoader> python_resource_format_loader;
 Ref<PythonResourceFormatSaver> python_resource_format_saver;
@@ -19,18 +20,32 @@ Ref<PythonResourceFormatSaver> python_resource_format_saver;
 void initialize_gdpy_module(ModuleInitializationLevel p_level) {
     if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS)
     {
+        std::cout << "init gdpy" << std::endl;
         PyImport_AppendInittab("_gdpy", &PyInit__gdpy);
         Py_Initialize();
         {
-            auto gdpy_module = PyImport_ImportModule("_gdpy");
-            if (!gdpy_module)
             {
-                std::cerr << "Failed to load _gdpy." << std::endl;
-                Py_FinalizeEx();
-                return;
+                auto gdpy_module = PyImport_ImportModule("_gdpy");
+                if (!gdpy_module)
+                {
+                    std::cerr << "Failed to load _gdpy." << std::endl;
+                    Py_FinalizeEx();
+                    return;
+                }
+                Py_DECREF(gdpy_module);
             }
-            Py_DECREF(gdpy_module);
+            {
+                auto gdpy_init_module = PyImport_ImportModule("gdpy._init");
+                if (!gdpy_init_module)
+                {
+                    std::cerr << "Failed to load gdpy._init." << std::endl;
+                    Py_FinalizeEx();
+                    return;
+                }
+                Py_DECREF(gdpy_init_module);
+            }
         }
+        py_thread_state = PyEval_SaveThread();
         
         GDREGISTER_CLASS(PythonScript);
 		python_script_language = memnew(PythonScriptLanguage);
@@ -47,6 +62,7 @@ void initialize_gdpy_module(ModuleInitializationLevel p_level) {
 void uninitialize_gdpy_module(ModuleInitializationLevel p_level) {
     if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS)
     {
+        std::cout << "deinit gdpy" << std::endl;
         if (python_script_language)
         {
             ScriptServer::unregister_language(python_script_language);
@@ -60,6 +76,8 @@ void uninitialize_gdpy_module(ModuleInitializationLevel p_level) {
 		ResourceSaver::remove_resource_format_saver(python_resource_format_saver);
 		python_resource_format_saver.unref();
         
+        PyEval_RestoreThread(py_thread_state);
         Py_FinalizeEx();
+        py_thread_state = 0;
     }
 }

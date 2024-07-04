@@ -155,103 +155,6 @@ static PyMethodDef Variant_method[] = {
     {0}
 };
 
-/* MetaPathFinder */
-typedef struct
-{
-    PyObject_HEAD
-} MetaPathFinder;
-
-static PyTypeObject MetaPathFinderType = {
-    PyVarObject_HEAD_INIT(0, 0)
-    "_gdpy.MetaPathFinder",
-    sizeof(MetaPathFinder),
-    0
-};
-
-static PyObject *
-MetaPathFinder_find_spec(MetaPathFinder *self, PyObject *args, PyObject *kwargs)
-{
-    static char *keywords[] = {"fullname", "path", "target", 0};
-    PyObject *fullname;
-    PyObject *path_;
-    PyObject *target_;
-    if (!PyArg_ParseTupleAndKeywords(
-        args, kwargs, "UO|O", keywords,
-        &fullname, &path_, &target_
-    ))
-    {
-        std::cout << "PyArg_ParseTupleAndKeywords failed" << std::endl;
-        PyErr_Print();
-        return 0;
-    }
-    
-    bool is_package = false;
-    
-    auto parts = PyObject_CallMethod(fullname, "split", "s", ",");
-    if (!parts){ return 0; }
-    auto parts_length = PySequence_Length(parts);
-    if (parts_length == -1){ return 0; }
-    if (parts_length == 1)
-    {
-        is_package = true;
-        Py_DECREF(parts);
-        parts = 0;
-    }
-    else
-    {
-        // parts = parts[1:]
-        {
-            auto sliced_parts = PySequence_GetSlice(parts, 1, -1);
-            if (!sliced_parts)
-            {
-                Py_DECREF(parts);
-                return 0;
-            }
-            auto old_parts = parts;
-            parts = sliced_parts;
-            Py_DECREF(old_parts);
-        }
-        // path = "/".join(parts)
-        auto slash = PyUnicode_FromString("/");
-        if (!slash)
-        {
-            Py_DECREF(parts);
-            return 0;
-        }
-        auto path = PyObject_CallMethod(slash, "join", "O", parts);
-        Py_DECREF(slash);
-        slash = 0;
-        Py_DECREF(parts);
-        parts = 0;
-        if (!path){ return 0; }
-        // path = "res://" + path
-        {
-            auto res_prefix = PyUnicode_FromString("res://");
-            if (!res_prefix)
-            {
-                Py_DECREF(path);
-                return 0;
-            }
-            auto new_path = PyNumber_Add(res_prefix, path);
-            Py_DECREF(path);
-            Py_DECREF(res_prefix);
-            if (!new_path){ return 0; }
-            path = new_path;
-        }
-        std::cout << "GDPY META: " << PyUnicode_AsUTF8(path) << std::endl;
-        Py_DECREF(path);
-    }
-    
-    std::cout << "GDPY META: " << PyUnicode_AsUTF8(fullname) << std::endl;
-        
-    Py_RETURN_NONE;
-};
-
-static PyMethodDef MetaPathFinder_method[] = {
-    {"find_spec", (PyCFunction)MetaPathFinder_find_spec, METH_VARARGS | METH_KEYWORDS},
-    {0}
-};
-
 /* OutputStream */
 typedef struct
 {
@@ -416,50 +319,16 @@ int set_sys_output_stream(const char *name, std::ostream &stream)
     return result;
 }
 
-
-int add_meta_path_finder()
-{
-    auto sys_module = PyImport_ImportModule("sys");
-    if (!sys_module){ return 0; }
-    
-    PyObject *py_meta_path_finder = PyObject_CallNoArgs(
-        (PyObject *)&MetaPathFinderType
-    );
-    if (!py_meta_path_finder)
-    {
-        Py_DECREF(sys_module);
-        return 0;
-    }
-    
-    auto meta_path = PyObject_GetAttrString(sys_module, "meta_path");
-    Py_DECREF(sys_module);
-    if (!meta_path)
-    {
-        Py_DECREF(py_meta_path_finder);
-        return 0;
-    }
-    
-    auto result = PyList_Append(meta_path, py_meta_path_finder);
-    Py_DECREF(py_meta_path_finder);
-    Py_DECREF(meta_path);
-    return result;
-}
-
-
 PyMODINIT_FUNC PyInit__gdpy()
 {
     VariantType.tp_methods = Variant_method;
     VariantType.tp_dealloc = (destructor)Variant_dealloc;
-    
-    MetaPathFinderType.tp_new = PyType_GenericNew;
-    MetaPathFinderType.tp_methods = MetaPathFinder_method;
     
     OutputStreamType.tp_new = PyType_GenericNew;
     OutputStreamType.tp_methods = OutputStream_method;
     
     if (PyType_Ready(&VariantType) < 0){ return 0; }
     if (PyType_Ready(&OutputStreamType) < 0){ return 0; }
-    if (PyType_Ready(&MetaPathFinderType) < 0){ return 0; }
     
     gdpy_module_def.m_methods = gdpy_module_methods;
     PyObject *module = PyModule_Create(&gdpy_module_def);
@@ -482,10 +351,6 @@ PyMODINIT_FUNC PyInit__gdpy()
         Py_DECREF(module);
         return 0;
     }
-    if (add_meta_path_finder() != 0)
-    {
-        Py_DECREF(module);
-        return 0;
-    }
+
     return module;
 }
