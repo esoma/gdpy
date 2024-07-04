@@ -31,6 +31,14 @@ Variant_dealloc(Variant_ *self)
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
+
+static PyObject *
+Variant_call(PyObject *self, PyObject *py_args)
+{
+    Py_RETURN_NONE;
+}
+
+
 static PyObject *
 Variant_narrow_bool(Variant_ *self, PyObject *unused)
 {
@@ -60,7 +68,7 @@ Variant_narrow_int(Variant_ *self, PyObject *unused)
 };
 
 static PyObject *
-Variant_narrow_String(Variant_ *self, PyObject *unused)
+Variant_narrow_str(Variant_ *self, PyObject *unused)
 {
     return PyUnicode_FromString(
         (self->variant->operator String()).utf8().get_data()
@@ -68,10 +76,11 @@ Variant_narrow_String(Variant_ *self, PyObject *unused)
 };
 
 static PyMethodDef Variant_method[] = {
+    //{"call_method", (PyCFunction)Variant_call_method, METH_O},
     {"narrow_bool", (PyCFunction)Variant_narrow_bool, METH_NOARGS},
     {"narrow_float", (PyCFunction)Variant_narrow_float, METH_NOARGS},
     {"narrow_int", (PyCFunction)Variant_narrow_int, METH_NOARGS},
-    {"narrow_String", (PyCFunction)Variant_narrow_String, METH_NOARGS},
+    {"narrow_str", (PyCFunction)Variant_narrow_str, METH_NOARGS},
     {0}
 };
 
@@ -400,6 +409,13 @@ PyMODINIT_FUNC PyInit__gdpy()
     gdpy_module_def.m_methods = gdpy_module_methods;
     PyObject *module = PyModule_Create(&gdpy_module_def);
     if (!module){ return 0; }
+    
+    Py_INCREF(&VariantType);
+    if (PyModule_AddObject(module, "Variant", (PyObject *)&VariantType) < 0) {
+        Py_DECREF(&VariantType);
+        Py_DECREF(module);
+        return 0;
+    }
     
     if (set_sys_output_stream("stdout", std::cout) != 0)
     {

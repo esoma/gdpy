@@ -6,6 +6,7 @@ from pathlib import Path
 python_keyword_safe = {
     "class": "cls",
     "pass": "pass_",
+    "from": "from_",
 }
 def safe_token(n):
     return python_keyword_safe.get(n, n)
@@ -25,6 +26,7 @@ env = Environment(
 )
 env.globals["godot_type_name_to_python"] = godot_type_name_to_python
 env.globals["safe_token"] = safe_token
+builtin_template = env.get_template("builtin.py")
 class_template = env.get_template("class.py")
 enum_template = env.get_template("enum.py")
 
@@ -32,10 +34,13 @@ enum_template = env.get_template("enum.py")
 with open("vendor/godot-cpp/gdextension/extension_api.json", "r") as f:
     godot_api = json.load(f)
 
-
 for enum in godot_api["global_enums"]:
     with open(Path("build") / f"{enum['name'].lower()}.py", "w") as f:
         f.write(enum_template.render(**enum))
+        
+for builtin in godot_api["builtin_classes"]:
+    with open(Path("build") / f"{builtin['name'].lower()}.py", "w") as f:
+        f.write(builtin_template.render(**builtin))
 
 for cls in godot_api["classes"]:
     references = set()

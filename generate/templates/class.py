@@ -1,16 +1,17 @@
 
+from __future__ import annotations
+
 __all__ = ["{{ name }}"]
 
 from enum import IntEnum, IntFlag
-from typing import Final, Any, TypeAlias
-from _gdpy import call_method_bind, class_db_get_method
+from typing import Final, Any
+from _gdpy import call_method_bind, class_db_get_method, Variant
 from gdpy._narrow import narrow_variant_to
 
 {% for module, name in imports %}
 from {{ module }} import {{ name }}
 {%- endfor %}
 
-Variant: TypeAlias = Any
 def free_object(*args, **kwargs): pass
 def narrow_variant_to_python(thing, *args, **kwargs): return thing
 def signal(*args, **kwargs): return object()
@@ -25,12 +26,12 @@ class {{ name }}
 {%- endif -%}
 :
 {% if not inherits %}
-    _gdpy_object: Any = None
+    _gdpy_variant: Variant | None = None
     
     def free(self) -> None:
-        if self._gdpy_object is not None:
-            free_object(self._gdpy_object)
-            self._gdpy_object = None
+        if self._gdpy_variant is not None:
+            free_object(self._gdpy_variant)
+            self._gdpy_variant = None
         
     def __del__(self) -> None:
         self.free()
@@ -41,6 +42,9 @@ class {{ name }}
         except AttributeError:
             return repr(self)
         return self.to_string()
+        
+    def __init__(self, *, _gdpy_variant: Variant):
+        self._gdpy_variant = _gdpy_variant
 {%- endif %}
 
 {% for constant in constants %}
@@ -82,14 +86,14 @@ class {{ name }}
 {%- endif -%}
     ):
 {%- if not method["is_static"] %}
-        if self._gdpy_object is None:
+        if self._gdpy_variant is None:
             raise RuntimeError(f"{self!r} has been free'd")
 {%- endif %}
         method = class_db_get_method("{{ name }}", "{{ method["name"] }}")
         return_variant = call_method_bind(
             method,
 {%- if not method["is_static"] %}
-            self._gdpy_object,
+            self._gdpy_variant,
 {%- else %}
             None,
 {%- endif %} [
