@@ -10,21 +10,37 @@
 
 #include <iostream>
 
-Error PythonScript::import()
+Error PythonScript::import(bool reload)
 {
     PythonGil python_gil;
+    
+    auto *code = PyUnicode_FromFormat(
+        "from gdpy._import import import_script;"
+        "module = import_script('%s', %s)",
+        get_path().utf8().get_data(),
+        reload ? "True" : "False"
+    );
+    if (!code)
+    {
+        Py_DECREF(code);
+        ERR_FAIL_V_MSG(FAILED, "failed to create code object");
+    }
+
     auto dict = PyDict_New();
     if (!dict)
     {
+        Py_DECREF(code);
         Py_DECREF(dict);
         ERR_FAIL_V_MSG(FAILED, "failed to create PythonScript dict");
     }
+    
     auto ret = PyRun_String(
-        source.utf8().get_data(),
+        PyUnicode_AsUTF8(code),
         Py_file_input,
         dict,
         dict
     );
+    Py_DECREF(code);
     if (!ret)
     {
         PyErr_Clear();
@@ -37,7 +53,7 @@ Error PythonScript::import()
     return OK;
 }
 
-Error PythonScript::load()
+Error PythonScript::load(bool reload)
 {
     Error err;
 	Ref<FileAccess> f = FileAccess::open(get_path(), FileAccess::READ, &err);
@@ -58,7 +74,7 @@ Error PythonScript::load()
     
     this->source = s;
 
-    return import();
+    return import(reload);
 }
 
 bool PythonScript::can_instantiate() const
@@ -124,8 +140,7 @@ void PythonScript::set_source_code(const String &p_code)
 
 Error PythonScript::reload(bool p_keep_state)
 {
-    std::cout << "<PythonScript::reload>" << std::endl;
-    return OK;
+    return load(true);
 }
 
 

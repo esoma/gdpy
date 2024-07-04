@@ -1,6 +1,7 @@
 
 #include "python_script.h"
 #include "python_resource_format_loader.h"
+#include <iostream>
 
 Ref<Resource>
 PythonResourceFormatLoader::load(
@@ -12,10 +13,17 @@ PythonResourceFormatLoader::load(
     CacheMode p_cache_mode
 )
 {
+    {
+        auto existing = ResourceCache::get_ref(p_path);
+        if (existing.is_valid())
+        {
+            return existing;
+        }
+    }
     Ref<PythonScript> scr;
     scr.instantiate();
     scr->set_path(p_path, false);
-    *r_error = scr->load();
+    *r_error = scr->load(false);
     return scr;
 }
 

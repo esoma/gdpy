@@ -9,9 +9,9 @@ class PythonScript : public Script
     
     String source;
     
-    Error import();
+    Error import(bool reload);
 public:
-    Error load();
+    Error load(bool reload);
 
     virtual bool can_instantiate() const override;
     
