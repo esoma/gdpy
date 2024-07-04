@@ -2,6 +2,15 @@
 import json
 from jinja2 import Environment, FileSystemLoader
 from pathlib import Path
+from argparse import ArgumentParser
+import shutil
+
+arg_parser = ArgumentParser()
+arg_parser.add_argument("-b", "--build", default="build")
+args = arg_parser.parse_args()
+
+build_dir = Path(args.build) / "gdpy"
+build_dir.mkdir(parents=True, exist_ok=True)
 
 python_keyword_safe = {
     "class": "cls",
@@ -35,11 +44,11 @@ with open("vendor/godot-cpp/gdextension/extension_api.json", "r") as f:
     godot_api = json.load(f)
 
 for enum in godot_api["global_enums"]:
-    with open(Path("build") / f"{enum['name'].lower()}.py", "w") as f:
+    with open(build_dir / f"{enum['name'].lower()}.py", "w") as f:
         f.write(enum_template.render(**enum))
         
 for builtin in godot_api["builtin_classes"]:
-    with open(Path("build") / f"{builtin['name'].lower()}.py", "w") as f:
+    with open(build_dir / f"{builtin['name'].lower()}.py", "w") as f:
         f.write(builtin_template.render(**builtin))
 
 for cls in godot_api["classes"]:
@@ -63,9 +72,12 @@ for cls in godot_api["classes"]:
             module = f"gdpy.{parts[0].lower()}"
             imports.add((module, parts[0]))
     
-    with open(Path("build") / f"{cls['name'].lower()}.py", "w") as f:
+    with open(build_dir / f"{cls['name'].lower()}.py", "w") as f:
         f.write(class_template.render(
             **({"inherits": None} | cls),
             imports=imports
         ))
     godot_type_python = original_godot_type_python
+
+for static_file in (Path(__file__).parent / "static").iterdir():
+    shutil.copy(static_file, build_dir / static_file.name)
