@@ -11,23 +11,6 @@
 
 Error PythonScript::import()
 {
-    std::cout << get_path().utf8().get_data() << std::endl;
-    
-    auto create_file_access = ClassDB::get_method("FileAccess", "open");
-    std::cout << "???" << create_file_access << std::endl;
-    Variant path("test");
-    Variant mode(FileAccess::ACCESS_RESOURCES);
-    const Variant *args[] = {
-        &path,
-        &mode
-    };
-    Callable::CallError error;
-    auto res = create_file_access->call(0, args, 2, error);
-    std::cout << "||||||" << res.stringify().utf8().get_data() << std::endl;
-    
-    auto file_access = FileAccess::create(FileAccess::ACCESS_RESOURCES);
-    auto gdret = file_access->callp("is_open", 0, 0, error);
-    std::cout << "||||||" << gdret.stringify().utf8().get_data() << std::endl;
     /*
     auto module = PyImport_ImportModule(get_path().utf8().get_data());
     if (!module)
