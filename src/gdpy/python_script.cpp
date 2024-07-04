@@ -43,8 +43,11 @@ Error PythonScript::import(bool reload)
     Py_DECREF(code);
     if (!ret)
     {
-        PyErr_Clear();
         Py_DECREF(dict);
+        auto exception = PyErr_GetRaisedException();
+        PyErr_Clear();
+        PyErr_DisplayException(exception);
+        Py_DECREF(exception);
         ERR_FAIL_V_MSG(FAILED, "script failed to execute");
     }
     Py_DECREF(ret);
