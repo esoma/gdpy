@@ -7,6 +7,90 @@
 #include <vector>
 
 
+/* Variant */
+typedef struct
+{
+    PyObject_HEAD
+    Variant *variant;
+} Variant_;
+
+static PyTypeObject VariantType = {
+    PyVarObject_HEAD_INIT(0, 0)
+    "_gdpy.Variant",
+    sizeof(Variant_),
+    0
+};
+
+static void
+Variant_dealloc(Variant_ *self)
+{
+    if (self->variant)
+    {
+        delete self->variant;
+    }
+    Py_TYPE(self)->tp_free((PyObject *)self);
+}
+
+static PyObject *
+Variant_narrow_bool(Variant_ *self, PyObject *unused)
+{
+    if (self->variant->operator bool())
+    {
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+};
+
+static PyObject *
+Variant_get_target(Variant_ *self, PyObject *unused)
+{
+    return PyUnicode_FromString("Variant");
+};
+
+static PyObject *
+Variant_narrow_float(Variant_ *self, PyObject *unused)
+{
+    return PyFloat_FromDouble(self->variant->operator double());
+};
+
+static PyObject *
+Variant_narrow_int(Variant_ *self, PyObject *unused)
+{
+    return PyLong_FromLong(self->variant->operator int64_t());
+};
+
+static PyObject *
+Variant_narrow_String(Variant_ *self, PyObject *unused)
+{
+    return PyUnicode_FromString(
+        (self->variant->operator String()).utf8().get_data()
+    );
+};
+
+static PyMethodDef Variant_method[] = {
+    {"narrow_bool", (PyCFunction)Variant_narrow_bool, METH_NOARGS},
+    {"narrow_float", (PyCFunction)Variant_narrow_float, METH_NOARGS},
+    {"narrow_int", (PyCFunction)Variant_narrow_int, METH_NOARGS},
+    {"narrow_String", (PyCFunction)Variant_narrow_String, METH_NOARGS},
+    {0}
+};
+
+static PyObject *
+Variant_create(Variant &variant)
+{
+    if (
+        variant.get_type() == Variant::Type::NIL ||
+        (variant.get_type() == Variant::Type::OBJECT && variant.is_null())
+    )
+    {
+        Py_RETURN_NONE;
+    }
+    Variant_ *self = (Variant_ *)VariantType.tp_alloc(&VariantType, 0);
+    if (!self){ return 0; }
+    self->variant = new Variant(variant);
+    return (PyObject *)self;
+}
+
 /* MetaPathFinder */
 typedef struct
 {
@@ -174,7 +258,7 @@ class_db_get_method(PyObject *self, PyObject *args)
         return 0;
     }
     
-    return PyCapsule_New(method, "MethodBind", 0);
+    return PyCapsule_New(method, "_gdpy.MethodBind", 0);
 }
 
 static PyObject *
@@ -193,7 +277,7 @@ call_method_bind(PyObject *self, PyObject *args)
 
     auto method_bind = (MethodBind *)PyCapsule_GetPointer(
         py_method_bind,
-        "MethodBind"
+        "_gdpy.MethodBind"
     );
     if (!method_bind){ return 0; }
     
@@ -209,8 +293,13 @@ call_method_bind(PyObject *self, PyObject *args)
         if (!conversion){ return 0; }
     }
 
+    Object *instance = 0;
+    if (py_instance != Py_None)
+    {
+        instance = ((Variant_ *)py_instance)->variant->operator Object *();
+    }
     Callable::CallError error;
-    auto ret = method_bind->call(0, &v_argsp[0], arg_count, error);
+    auto ret = method_bind->call(instance, &v_argsp[0], arg_count, error);
     switch(error.error)
     {
         case Callable::CallError::CALL_ERROR_INVALID_METHOD:
@@ -232,8 +321,7 @@ call_method_bind(PyObject *self, PyObject *args)
             PyErr_Format(PyExc_TypeError, "method not const");
             return 0;
     }
-    
-    return variant_to_pyobject(ret);
+    return Variant_create(ret);
 }
 
 static PyMethodDef gdpy_module_methods[] = {
@@ -296,12 +384,16 @@ int add_meta_path_finder()
 
 PyMODINIT_FUNC PyInit__gdpy()
 {
+    VariantType.tp_methods = Variant_method;
+    VariantType.tp_dealloc = (destructor)Variant_dealloc;
+    
     MetaPathFinderType.tp_new = PyType_GenericNew;
     MetaPathFinderType.tp_methods = MetaPathFinder_method;
     
     OutputStreamType.tp_new = PyType_GenericNew;
     OutputStreamType.tp_methods = OutputStream_method;
     
+    if (PyType_Ready(&VariantType) < 0){ return 0; }
     if (PyType_Ready(&OutputStreamType) < 0){ return 0; }
     if (PyType_Ready(&MetaPathFinderType) < 0){ return 0; }
     

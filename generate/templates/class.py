@@ -2,8 +2,18 @@
 __all__ = ["{{ name }}"]
 
 from enum import IntEnum, IntFlag
-from typing import Final, Any
-from _gdpy import class_db_get_method, call_method_bind, narrow_variant_to_python
+from typing import Final, Any, TypeAlias
+from _gdpy import call_method_bind, class_db_get_method
+from gdpy._narrow import narrow_variant_to
+
+{% for module, name in imports %}
+from {{ module }} import {{ name }}
+{%- endfor %}
+
+Variant: TypeAlias = Any
+def free_object(*args, **kwargs): pass
+def narrow_variant_to_python(thing, *args, **kwargs): return thing
+def signal(*args, **kwargs): return object()
 
 {% if inherits %}
 from .{{ inherits.lower() }} import {{ inherits }}
@@ -15,12 +25,12 @@ class {{ name }}
 {%- endif -%}
 :
 {% if not inherits %}
-    _gdpy_handle: Any = None
+    _gdpy_object: Any = None
     
     def free(self) -> None:
-        if self._gdpy_handle is not None:
-            memdelete(self._gdpy_handle)
-            self._gdpy_handle = None
+        if self._gdpy_object is not None:
+            free_object(self._gdpy_object)
+            self._gdpy_object = None
         
     def __del__(self) -> None:
         self.free()
@@ -71,13 +81,15 @@ class {{ name }}
     None
 {%- endif -%}
     ):
-        if self._gdpy_handle is None:
+{%- if not method["is_static"] %}
+        if self._gdpy_object is None:
             raise RuntimeError(f"{self!r} has been free'd")
+{%- endif %}
         method = class_db_get_method("{{ name }}", "{{ method["name"] }}")
         return_variant = call_method_bind(
             method,
 {%- if not method["is_static"] %}
-            self._gdpy_handle,
+            self._gdpy_object,
 {%- else %}
             None,
 {%- endif %} [
@@ -89,9 +101,9 @@ class {{ name }}
 {%- endif %}
         ])
 {%- if "return_value" in method %}
-        return narrow_variant_to_python(
+        return narrow_variant_to(
             return_variant,
-            "{{ method['return_value']['type'] }}"
+            {{ godot_type_name_to_python(method['return_value']['type']) }}
         )
 {%- endif -%}
 {%- endfor %}

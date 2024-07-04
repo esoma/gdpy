@@ -36,7 +36,7 @@ Error PythonScript::import()
         ERR_FAIL_V_MSG(FAILED, "script failed to execute");
     }
     */
-
+    
     auto chr_source = source.utf8();
     
     auto dict = PyDict_New();
@@ -59,7 +59,7 @@ Error PythonScript::import()
     }
     Py_DECREF(ret);
     
-    std::cout << "dict: " << PyUnicode_AsUTF8(PyObject_Str(dict)) << std::endl;
+    //std::cout << "dict: " << PyUnicode_AsUTF8(PyObject_Str(dict)) << std::endl;
     Py_DECREF(dict);
 
     return OK;

@@ -7,6 +7,5 @@
 #include "core/variant/variant.h"
 
 bool pyobject_to_variant(PyObject *py, Variant &variant);
-PyObject *variant_to_pyobject(Variant &variant);
 
 #endif
