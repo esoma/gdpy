@@ -5,6 +5,7 @@ __all__ = ["{{ name }}"]
 
 from typing import Any
 from _gdpy import Variant
+from gdpy._narrow import narrow_variant_to
 
 class {{ name }}:
     _gdpy_variant: Variant | None = None
@@ -35,8 +36,8 @@ class {{ name }}:
     None
 {%- endif -%}
     ):
-        return_variant = self._gdpy_variant.call(
-            {{ method["name"] }}, [
+        return_variant = self._gdpy_variant.call_method(
+            "{{ method["name"] }}", [
 {%- for argument in method["arguments"] %}
             {{ safe_token(argument["name"]) }},
 {%- endfor %}

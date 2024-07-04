@@ -21,6 +21,22 @@ static PyTypeObject VariantType = {
     0
 };
 
+static PyObject *
+Variant_create(Variant &variant)
+{
+    if (
+        variant.get_type() == Variant::Type::NIL ||
+        (variant.get_type() == Variant::Type::OBJECT && variant.is_null())
+    )
+    {
+        Py_RETURN_NONE;
+    }
+    Variant_ *self = (Variant_ *)VariantType.tp_alloc(&VariantType, 0);
+    if (!self){ return 0; }
+    self->variant = new Variant(variant);
+    return (PyObject *)self;
+}
+
 static void
 Variant_dealloc(Variant_ *self)
 {
@@ -33,9 +49,64 @@ Variant_dealloc(Variant_ *self)
 
 
 static PyObject *
-Variant_call(PyObject *self, PyObject *py_args)
+Variant_call_method(PyObject *self, PyObject *args)
 {
-    Py_RETURN_NONE;
+    PyObject *py_method_name;
+    PyObject *py_args;
+    if (!PyArg_ParseTuple(args, "UO", &py_method_name, &py_args))
+    {
+        return 0;
+    }
+    
+    auto arg_count = PySequence_Length(py_args);
+    if (arg_count == -1){ return 0; }
+    
+    const char *method_name = PyUnicode_AsUTF8(py_method_name);
+    if (!method_name){ return 0; }
+    
+    std::vector<Variant> v_args(arg_count);
+    std::vector<const Variant*> v_argsp(arg_count);
+    for (Py_ssize_t i = 0; i < arg_count; i++)
+    {
+        v_argsp[i] = &v_args[i];
+        auto py_arg = PySequence_GetItem(py_args, i);
+        if (!py_arg){ return 0; }
+        auto conversion = pyobject_to_variant(py_arg, v_args[i]);
+        Py_DECREF(py_arg);
+        if (!conversion){ return 0; }
+    }
+    
+    Callable::CallError error;
+    Variant ret;
+    ((Variant_ *)self)->variant->callp(  
+        method_name,
+        &v_argsp[0],
+        arg_count,
+        ret,
+        error
+    );
+    switch(error.error)
+    {
+        case Callable::CallError::CALL_ERROR_INVALID_METHOD:
+            PyErr_Format(PyExc_TypeError, "invalid method");
+            return 0;
+        case Callable::CallError::CALL_ERROR_INVALID_ARGUMENT:
+            PyErr_Format(PyExc_TypeError, "invalid argument");
+            return 0;
+        case Callable::CallError::CALL_ERROR_TOO_MANY_ARGUMENTS:
+            PyErr_Format(PyExc_TypeError, "too many arguments");
+            return 0;
+        case Callable::CallError::CALL_ERROR_TOO_FEW_ARGUMENTS:
+            PyErr_Format(PyExc_TypeError, "too few arguments");
+            return 0;
+        case Callable::CallError::CALL_ERROR_INSTANCE_IS_NULL:
+            PyErr_Format(PyExc_TypeError, "instance is null");
+            return 0;
+        case Callable::CallError::CALL_ERROR_METHOD_NOT_CONST:
+            PyErr_Format(PyExc_TypeError, "method not const");
+            return 0;
+    }
+    return Variant_create(ret);
 }
 
 
@@ -76,29 +147,13 @@ Variant_narrow_str(Variant_ *self, PyObject *unused)
 };
 
 static PyMethodDef Variant_method[] = {
-    //{"call_method", (PyCFunction)Variant_call_method, METH_O},
+    {"call_method", (PyCFunction)Variant_call_method, METH_VARARGS},
     {"narrow_bool", (PyCFunction)Variant_narrow_bool, METH_NOARGS},
     {"narrow_float", (PyCFunction)Variant_narrow_float, METH_NOARGS},
     {"narrow_int", (PyCFunction)Variant_narrow_int, METH_NOARGS},
     {"narrow_str", (PyCFunction)Variant_narrow_str, METH_NOARGS},
     {0}
 };
-
-static PyObject *
-Variant_create(Variant &variant)
-{
-    if (
-        variant.get_type() == Variant::Type::NIL ||
-        (variant.get_type() == Variant::Type::OBJECT && variant.is_null())
-    )
-    {
-        Py_RETURN_NONE;
-    }
-    Variant_ *self = (Variant_ *)VariantType.tp_alloc(&VariantType, 0);
-    if (!self){ return 0; }
-    self->variant = new Variant(variant);
-    return (PyObject *)self;
-}
 
 /* MetaPathFinder */
 typedef struct
