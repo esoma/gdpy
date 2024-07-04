@@ -73,7 +73,10 @@ class {{ name }}
         self,
 {%- endif %}
 {%- for argument in method["arguments"] %}
-        {{ safe_token(argument["name"]) }}: {{ godot_type_name_to_python(argument["type"]) }},
+        {{ safe_token(argument["name"]) }}: {{ godot_type_name_to_python(argument["type"]) }}
+{%- if "default_value" in argument -%}
+        ={{ godot_value_to_python(argument["default_value"]) }}
+{%- endif -%},
 {%- endfor %}
 {%- if method["is_vararg"] %}
         *varargs: Variant,

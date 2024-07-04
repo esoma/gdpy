@@ -19,12 +19,11 @@ class GodotLoader(Loader):
         return module
         
     def exec_module(self, module):
-        print(self.file_path)
         if self.file_path is None:
             return module
         file = FileAccess.open(self.file_path, FileAccess.ModeFlags.READ)
         try:
-            exec(file.get_as_text(False), module.__dict__, module.__dict__)
+            exec(file.get_as_text(), module.__dict__, module.__dict__)
         finally:
             file.close()
         return module

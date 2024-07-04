@@ -29,10 +29,22 @@ godot_type_python = {
 }
 def godot_type_name_to_python(t):
     return godot_type_python.get(t, "Any")
+    
+godot_value_python = {
+    "null": None,
+    "false": False,
+    "true": True,
+}
+def godot_value_to_python(t):
+    try:
+        return godot_value_python[t]
+    except KeyError:
+        return t
 
 env = Environment(
     loader=FileSystemLoader(Path(__file__).parent / "templates"),
 )
+env.globals["godot_value_to_python"] = godot_value_to_python
 env.globals["godot_type_name_to_python"] = godot_type_name_to_python
 env.globals["safe_token"] = safe_token
 builtin_template = env.get_template("builtin.py")
