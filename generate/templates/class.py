@@ -92,14 +92,11 @@ class {{ name }}
         if self._gdpy_variant is None:
             raise RuntimeError(f"{self!r} has been free'd")
 {%- endif %}
+{%- if method["is_static"] %}
         method = class_db_get_method("{{ name }}", "{{ method["name"] }}")
         return_variant = call_method_bind(
             method,
-{%- if not method["is_static"] %}
-            self._gdpy_variant,
-{%- else %}
-            None,
-{%- endif %} [
+            None, [
 {%- for argument in method["arguments"] %}
             {{ safe_token(argument["name"]) }},
 {%- endfor %}
@@ -107,6 +104,17 @@ class {{ name }}
             *varargs,
 {%- endif %}
         ])
+{% else %}
+        return_variant = self._gdpy_variant.call_method(
+            "{{ method["name"] }}", [
+{%- for argument in method["arguments"] %}
+            {{ safe_token(argument["name"]) }},
+{%- endfor %}
+{%- if method["is_vararg"] %}
+            *varargs,
+{%- endif %}
+        ])
+{% endif %}
 {%- if "return_value" in method %}
         return narrow_variant_to(
             return_variant,
