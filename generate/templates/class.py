@@ -88,10 +88,6 @@ class {{ name }}
     None
 {%- endif -%}
     ):
-{%- if not method["is_static"] %}
-        if self._gdpy_variant is None:
-            raise RuntimeError(f"{self!r} has been free'd")
-{%- endif %}
 {%- if method["is_static"] %}
         method = class_db_get_method("{{ name }}", "{{ method["name"] }}")
         return_variant = call_method_bind(
