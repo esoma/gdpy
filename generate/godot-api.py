@@ -16,6 +16,8 @@ python_keyword_safe = {
     "class": "cls",
     "pass": "pass_",
     "from": "from_",
+    "with": "with_",
+    "global": "global_",
 }
 def safe_token(n):
     return python_keyword_safe.get(n, n)
@@ -56,7 +58,11 @@ with open("vendor/godot-cpp/gdextension/extension_api.json", "r") as f:
     godot_api = json.load(f)
 
 for enum in godot_api["global_enums"]:
-    with open(build_dir / f"{enum['name'].lower()}.py", "w") as f:
+    prefix = ""
+    if enum["name"].startswith("Variant."):
+        prefix = "_"
+        enum["name"] = "Variant" + enum["name"].removeprefix("Variant.")
+    with open(build_dir / f"{prefix}{enum['name'].lower()}.py", "w") as f:
         f.write(enum_template.render(**enum))
         
 for builtin in godot_api["builtin_classes"]:
@@ -64,18 +70,24 @@ for builtin in godot_api["builtin_classes"]:
         f.write(builtin_template.render(**builtin))
 
 for cls in godot_api["classes"]:
+    annotation_references = set()
     references = set()
     for method in cls.get("methods", []):
         for argument in method.get("arguments", []):
-            references.add(argument["type"])
+            if "default_value" in argument:
+                references.add(argument["type"])
+            else:
+                annotation_references.add(argument["type"])
         try:
-            references.add(method["return_value"]["type"])
+            annotation_references.add(method["return_value"]["type"])
         except KeyError:
             pass
     references -= set(godot_type_python.keys())
+    annotation_references -= set(godot_type_python.keys())
     original_godot_type_python = godot_type_python
     godot_type_python = dict(godot_type_python)
     imports = set()
+    annotation_imports = set()
     for reference in references:
         name = reference.split("::")[-1]
         parts = name.split(".")
@@ -83,11 +95,20 @@ for cls in godot_api["classes"]:
         if parts[0] != cls["name"]:
             module = f"gdpy.{parts[0].lower()}"
             imports.add((module, parts[0]))
+    for reference in annotation_references:
+        name = reference.split("::")[-1]
+        parts = name.split(".")
+        godot_type_python[reference] = name
+        if parts[0] != cls["name"]:
+            module = f"gdpy.{parts[0].lower()}"
+            annotation_imports.add((module, parts[0]))
+    annotation_imports -= imports
     
     with open(build_dir / f"{cls['name'].lower()}.py", "w") as f:
         f.write(class_template.render(
             **({"inherits": None} | cls),
-            imports=imports
+            imports=imports,
+            annotation_imports=annotation_imports,
         ))
     godot_type_python = original_godot_type_python
 

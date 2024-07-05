@@ -10,6 +10,16 @@
 
 #include <iostream>
 
+static PyObject *get_analyze_function(const char *function_name)
+{
+    auto analyze_module = PyImport_ImportModule("gdpy._analyze");
+    if (!analyze_module){ return 0;}
+    auto func = PyObject_GetAttrString(analyze_module, function_name);
+    Py_DECREF(analyze_module);
+    if (!func){ return 0; }
+    return func;
+}
+
 Error PythonScript::import(bool reload)
 {
     PythonGil python_gil;
@@ -51,7 +61,22 @@ Error PythonScript::import(bool reload)
         ERR_FAIL_V_MSG(FAILED, "script failed to execute");
     }
     Py_DECREF(ret);
+    
+    auto module = PyDict_GetItemString(dict, "module");
     Py_DECREF(dict);
+    if (!module)
+    {
+        ERR_FAIL_V_MSG(FAILED, "module not found");
+    }
+    auto module_name_py = PyObject_GetAttrString(module, "__name__");
+    Py_DECREF(module);
+    if (!module_name_py)
+    {
+        ERR_FAIL_V_MSG(FAILED, "module name not set");
+    }
+    
+    module_name = PyUnicode_AsUTF8(module_name_py);
+    Py_DECREF(module_name_py);
 
     return OK;
 }
@@ -113,7 +138,9 @@ StringName PythonScript::get_instance_base_type() const
 ScriptInstance *PythonScript::instance_create(Object *p_this)
 {
     std::cout << "<PythonScript::instance_create>" << std::endl;
-    return memnew(PythonScriptInstance);
+    auto instance = memnew(PythonScriptInstance);
+    instance->script = Ref<PythonScript>(this);
+    return instance;
 }
 
 
@@ -218,7 +245,30 @@ PythonScript::get_property_default_value(
 )
 const
 {
-    std::cout << "<PythonScript::get_property_default_value>" << std::endl;
+    PythonGil python_gil;
+    auto func = get_analyze_function("get_property_default_value");
+    if (!func)
+    {
+        PyErr_Clear();
+        std::cout << "failed to find gdpy._analyze.get_property_default_value" << std::endl;
+        return false;
+    }
+    auto result = PyObject_CallFunction(
+        func,
+        "ss",
+        module_name.c_str(),
+        String(p_property).utf8().get_data()
+    );
+    Py_DECREF(func);
+    if (!result)
+    {
+        auto exception = PyErr_GetRaisedException();
+        PyErr_Clear();
+        PyErr_DisplayException(exception);
+        Py_DECREF(exception);
+        return false;
+    }
+    Py_DECREF(result);
     return false;
 }
 
@@ -232,6 +282,103 @@ void PythonScript::get_script_method_list(List<MethodInfo> *r_list) const
 void PythonScript::get_script_property_list(List<PropertyInfo> *r_list) const
 {
     std::cout << "<PythonScript::get_script_property_list>" << std::endl;
+    PythonGil python_gil;
+    auto func = get_analyze_function("get_properties");
+    if (!func)
+    {
+        PyErr_Clear();
+        std::cout << "failed to find gdpy._analyze.get_properties" << std::endl;
+        return;
+    }
+    auto properties = PyObject_CallFunction(
+        func,
+        "s",
+        module_name.c_str()
+    );
+    Py_DECREF(func);
+    if (!properties)
+    {
+        auto exception = PyErr_GetRaisedException();
+        PyErr_Clear();
+        PyErr_DisplayException(exception);
+        Py_DECREF(exception);
+        return;
+    }
+    
+    auto property_count = PyTuple_Size(properties);
+    if (PyErr_Occurred())
+    {
+        PyErr_Clear();
+        std::cout << "failed to get number of properties" << std::endl;
+        return;
+    }
+    
+    for (Py_ssize_t i = 0; i < property_count; i++)
+    {
+        auto py_property_info = PyTuple_GET_ITEM(properties, i);
+        PropertyInfo property_info;
+        {
+            auto py_type = PyObject_GetAttrString(py_property_info, "type");
+            if (!py_type)
+            {
+                Py_DECREF(properties);
+                PyErr_Clear();
+                std::cout << "failed to get property type" << std::endl;
+                return;
+            }
+            property_info.type = (Variant::Type)PyLong_AsLong(py_type);
+            Py_DECREF(py_type);
+            if (PyErr_Occurred())
+            {
+                Py_DECREF(properties);
+                PyErr_Clear();
+                std::cout << "failed to convert property type" << std::endl;
+                return;
+            }
+        }
+        {
+            auto py_name = PyObject_GetAttrString(py_property_info, "name");
+            if (!py_name)
+            {
+                PyErr_Clear();
+                std::cout << "failed to get property name" << std::endl;
+                return;
+            }
+            property_info.name = PyUnicode_AsUTF8(py_name);
+            Py_DECREF(py_name);
+            if (PyErr_Occurred())
+            {
+                Py_DECREF(properties);
+                PyErr_Clear();
+                std::cout << "failed to convert property name" << std::endl;
+                return;
+            }
+        }
+        {
+            auto py_class_name = PyObject_GetAttrString(py_property_info, "class_name");
+            if (!py_class_name)
+            {
+                Py_DECREF(properties);
+                PyErr_Clear();
+                std::cout << "failed to get property class_name" << std::endl;
+                return;
+            }
+            property_info.class_name = PyUnicode_AsUTF8(py_class_name);
+            Py_DECREF(py_class_name);
+            if (PyErr_Occurred())
+            {
+                Py_DECREF(properties);
+                PyErr_Clear();
+                std::cout << "failed to convert property class_name" << std::endl;
+                return;
+            }
+        }
+        r_list->push_back(property_info);
+    }
+
+    Py_DECREF(properties);
+
+    return;
 }
 
 

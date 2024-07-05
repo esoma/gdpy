@@ -17,7 +17,7 @@ class {{ name }}:
             return repr(self)
         return self.to_string()
         
-    def __init__(self, *, _gdpy_variant: Variant):
+    def __init__(self, *args, _gdpy_variant: Variant = None, **kwargs):
         self._gdpy_variant = _gdpy_variant
 
 {% for method in methods %}

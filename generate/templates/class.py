@@ -4,9 +4,16 @@ from __future__ import annotations
 __all__ = ["{{ name }}"]
 
 from enum import IntEnum, IntFlag
-from typing import Final, Any
+from typing import Final, Any, TYPE_CHECKING
 from _gdpy import call_method_bind, class_db_get_method, Variant
 from gdpy._narrow import narrow_variant_to
+
+{% if annotation_imports %}
+if TYPE_CHECKING:
+{% for module, name in annotation_imports %}
+    from {{ module }} import {{ name }}
+{%- endfor %}
+{% endif %}
 
 {% for module, name in imports %}
 from {{ module }} import {{ name }}
@@ -25,6 +32,8 @@ class {{ name }}
     ({{ inherits }})
 {%- endif -%}
 :
+    pass
+    
 {% if not inherits %}
     _gdpy_variant: Variant | None = None
     
@@ -131,9 +140,13 @@ class {{ name }}
 {%- endif %}
 {% endfor %}
 
+    """
 {% for property in properties %}
     {{ property["name"] }} = property(
-        {{ property["getter"] }}, 
+        {{ property["getter"] }},
+{%- if "setter" in property %}
         {{ property["setter"] }},
+{%- endif %}
     )
 {% endfor %}
+    """

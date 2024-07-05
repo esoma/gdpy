@@ -8,6 +8,7 @@
 class PythonScriptInstance : public ScriptInstance
 {
 private:
+    friend PythonScript;
     Ref<PythonScript> script;
 public:
     virtual bool set(const StringName &p_name, const Variant &p_value);

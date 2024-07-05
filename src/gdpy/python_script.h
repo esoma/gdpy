@@ -7,6 +7,7 @@ class PythonScript : public Script
 {
     GDCLASS(PythonScript, Script);
     
+    std::string module_name;
     String source;
     
     Error import(bool reload);

@@ -1,6 +1,7 @@
 
 #include "python_script_instance.h"
 #include "python_script_language.h"
+#include <iostream>
 
 bool
 PythonScriptInstance::set(
@@ -29,6 +30,7 @@ PythonScriptInstance::get_property_list(
 )
 const
 {
+    script->get_script_property_list(p_properties);
 }
 
 
