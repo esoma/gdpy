@@ -32,6 +32,13 @@ godot_type_python = {
 def godot_type_name_to_python(t):
     return godot_type_python.get(t, "Any")
     
+godot_type_name_to_variant_target = {
+}
+def godot_type_name_to_variant_target(t):
+    if t.startswith("enum::"):
+        return "int"
+    return t
+    
 godot_value_python = {
     "null": None,
     "false": False,
@@ -49,6 +56,7 @@ env = Environment(
 env.globals["godot_value_to_python"] = godot_value_to_python
 env.globals["godot_type_name_to_python"] = godot_type_name_to_python
 env.globals["safe_token"] = safe_token
+env.globals["godot_type_name_to_variant_target"] = godot_type_name_to_variant_target
 builtin_template = env.get_template("builtin.py")
 class_template = env.get_template("class.py")
 enum_template = env.get_template("enum.py")

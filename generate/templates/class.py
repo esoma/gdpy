@@ -6,7 +6,7 @@ __all__ = ["{{ name }}"]
 from enum import IntEnum, IntFlag
 from typing import Final, Any, TYPE_CHECKING
 from _gdpy import call_method_bind, class_db_get_method, VariantWrapper
-from gdpy._narrow import narrow_variant_to
+from gdpy._variant import narrow_variant_to, create_variant
 
 {% if annotation_imports %}
 if TYPE_CHECKING:
@@ -103,7 +103,10 @@ class {{ name }}
             method,
             None, [
 {%- for argument in method["arguments"] %}
-            {{ safe_token(argument["name"]) }},
+            create_variant(
+                {{ safe_token(argument["name"]) }},
+                "{{ godot_type_name_to_variant_target(argument["type"]) }}"
+            ),
 {%- endfor %}
 {%- if method["is_vararg"] %}
             *varargs,
@@ -113,7 +116,10 @@ class {{ name }}
         return_variant = self._gdpy_variant.call_method(
             "{{ method["name"] }}", [
 {%- for argument in method["arguments"] %}
-            {{ safe_token(argument["name"]) }},
+            create_variant(
+                {{ safe_token(argument["name"]) }},
+                "{{ godot_type_name_to_variant_target(argument["type"]) }}"
+            ),
 {%- endfor %}
 {%- if method["is_vararg"] %}
             *varargs,

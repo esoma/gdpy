@@ -3,7 +3,6 @@
 #include <iostream>
 
 #include "core/object/class_db.h"
-#include "conversion.h"
 #include <vector>
 
 
@@ -64,23 +63,20 @@ VariantWrapper_call_method(PyObject *self, PyObject *args)
     const char *method_name = PyUnicode_AsUTF8(py_method_name);
     if (!method_name){ return 0; }
     
-    std::vector<Variant> v_args(arg_count);
-    std::vector<const Variant*> v_argsp(arg_count);
+    std::vector<const Variant*> v_args(arg_count);
     for (Py_ssize_t i = 0; i < arg_count; i++)
     {
-        v_argsp[i] = &v_args[i];
-        auto py_arg = PySequence_GetItem(py_args, i);
+        auto py_arg = (VariantWrapper *)PySequence_GetItem(py_args, i);
         if (!py_arg){ return 0; }
-        auto conversion = pyobject_to_variant(py_arg, v_args[i]);
+        v_args[i] = py_arg->variant;
         Py_DECREF(py_arg);
-        if (!conversion){ return 0; }
     }
     
     Callable::CallError error;
     Variant ret;
     ((VariantWrapper *)self)->variant->callp(  
         method_name,
-        &v_argsp[0],
+        &v_args[0],
         arg_count,
         ret,
         error
@@ -109,6 +105,29 @@ VariantWrapper_call_method(PyObject *self, PyObject *args)
     return VariantWrapper_create(ret);
 }
 
+static PyObject *
+VariantWrapper_create_bool(PyObject *self, PyObject *obj)
+{
+    auto value = PyObject_IsTrue(obj);
+    if (value == -1){ return 0; }
+    return VariantWrapper_create(Variant((bool)value));
+}
+
+static PyObject *
+VariantWrapper_create_int(PyObject *self, PyObject *obj)
+{
+    auto value = PyLong_AsLong(obj);
+    if (value == -1 && PyErr_Occurred()){ return 0; }
+    return VariantWrapper_create(Variant(value));
+}
+
+static PyObject *
+VariantWrapper_create_String(PyObject *self, PyObject *obj)
+{
+    auto value = PyUnicode_AsUTF8(obj);
+    if (!value){ return 0; }
+    return VariantWrapper_create(Variant(String(value)));
+}
 
 static PyObject *
 VariantWrapper_narrow_bool(VariantWrapper *self, PyObject *unused)
@@ -148,6 +167,9 @@ VariantWrapper_narrow_str(VariantWrapper *self, PyObject *unused)
 
 static PyMethodDef VariantWrapper_method[] = {
     {"call_method", (PyCFunction)VariantWrapper_call_method, METH_VARARGS},
+    {"create_bool", (PyCFunction)VariantWrapper_create_bool, METH_O | METH_STATIC},
+    {"create_int", (PyCFunction)VariantWrapper_create_int, METH_O | METH_STATIC},
+    {"create_String", (PyCFunction)VariantWrapper_create_String, METH_O | METH_STATIC},
     {"narrow_bool", (PyCFunction)VariantWrapper_narrow_bool, METH_NOARGS},
     {"narrow_float", (PyCFunction)VariantWrapper_narrow_float, METH_NOARGS},
     {"narrow_int", (PyCFunction)VariantWrapper_narrow_int, METH_NOARGS},
@@ -248,16 +270,13 @@ call_method_bind(PyObject *self, PyObject *args)
     );
     if (!method_bind){ return 0; }
     
-    std::vector<Variant> v_args(arg_count);
-    std::vector<const Variant*> v_argsp(arg_count);
+    std::vector<const Variant*> v_args(arg_count);
     for (Py_ssize_t i = 0; i < arg_count; i++)
     {
-        v_argsp[i] = &v_args[i];
-        auto py_arg = PySequence_GetItem(py_args, i);
+        auto py_arg = (VariantWrapper *)PySequence_GetItem(py_args, i);
         if (!py_arg){ return 0; }
-        auto conversion = pyobject_to_variant(py_arg, v_args[i]);
+        v_args[i] = py_arg->variant;
         Py_DECREF(py_arg);
-        if (!conversion){ return 0; }
     }
 
     Object *instance = 0;
@@ -266,7 +285,7 @@ call_method_bind(PyObject *self, PyObject *args)
         instance = ((VariantWrapper *)py_instance)->variant->operator Object *();
     }
     Callable::CallError error;
-    auto ret = method_bind->call(instance, &v_argsp[0], arg_count, error);
+    auto ret = method_bind->call(instance, &v_args[0], arg_count, error);
     switch(error.error)
     {
         case Callable::CallError::CALL_ERROR_INVALID_METHOD:
