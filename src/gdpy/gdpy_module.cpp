@@ -13,7 +13,7 @@ typedef struct
     Variant *variant;
 } VariantWrapper;
 
-static PyTypeObject VariantWarapperType = {
+static PyTypeObject VariantWrapperType = {
     PyVarObject_HEAD_INIT(0, 0)
     "_gdpy.VariantWrapper",
     sizeof(VariantWrapper),
@@ -30,7 +30,7 @@ VariantWrapper_create(Variant &variant)
     {
         Py_RETURN_NONE;
     }
-    VariantWrapper *self = (VariantWrapper *)VariantWarapperType.tp_alloc(&VariantWarapperType, 0);
+    VariantWrapper *self = (VariantWrapper *)VariantWrapperType.tp_alloc(&VariantWrapperType, 0);
     if (!self){ return 0; }
     self->variant = new Variant(variant);
     return (PyObject *)self;
@@ -68,6 +68,16 @@ VariantWrapper_call_method(PyObject *self, PyObject *args)
     {
         auto py_arg = (VariantWrapper *)PyTuple_GET_ITEM(py_args, i);
         if (!py_arg){ return 0; }
+        auto is_instance = PyObject_IsInstance(
+            (PyObject *)py_arg,
+            (PyObject *)&VariantWrapperType
+        );
+        if (is_instance == -1){ return 0; }
+        if (is_instance == 0)
+        {
+            PyErr_Format(PyExc_TypeError, "expected VariantWrapper");
+            return 0;
+        }
         v_args[i] = py_arg->variant;
     }
     
@@ -281,6 +291,16 @@ call_method_bind(PyObject *self, PyObject *args)
     {
         auto py_arg = (VariantWrapper *)PyTuple_GET_ITEM(py_args, i);
         if (!py_arg){ return 0; }
+        auto is_instance = PyObject_IsInstance(
+            (PyObject *)py_arg,
+            (PyObject *)&VariantWrapperType
+        );
+        if (is_instance == -1){ return 0; }
+        if (is_instance == 0)
+        {
+            PyErr_Format(PyExc_TypeError, "expected VariantWrapper");
+            return 0;
+        }
         v_args[i] = py_arg->variant;
     }
 
@@ -345,22 +365,22 @@ int set_sys_output_stream(const char *name, std::ostream &stream)
 
 PyMODINIT_FUNC PyInit__gdpy()
 {
-    VariantWarapperType.tp_methods = VariantWrapper_method;
-    VariantWarapperType.tp_dealloc = (destructor)VariantWrapper_dealloc;
+    VariantWrapperType.tp_methods = VariantWrapper_method;
+    VariantWrapperType.tp_dealloc = (destructor)VariantWrapper_dealloc;
     
     OutputStreamType.tp_new = PyType_GenericNew;
     OutputStreamType.tp_methods = OutputStream_method;
     
-    if (PyType_Ready(&VariantWarapperType) < 0){ return 0; }
+    if (PyType_Ready(&VariantWrapperType) < 0){ return 0; }
     if (PyType_Ready(&OutputStreamType) < 0){ return 0; }
     
     gdpy_module_def.m_methods = gdpy_module_methods;
     PyObject *module = PyModule_Create(&gdpy_module_def);
     if (!module){ return 0; }
     
-    Py_INCREF(&VariantWarapperType);
-    if (PyModule_AddObject(module, "VariantWrapper", (PyObject *)&VariantWarapperType) < 0) {
-        Py_DECREF(&VariantWarapperType);
+    Py_INCREF(&VariantWrapperType);
+    if (PyModule_AddObject(module, "VariantWrapper", (PyObject *)&VariantWrapperType) < 0) {
+        Py_DECREF(&VariantWrapperType);
         Py_DECREF(module);
         return 0;
     }
