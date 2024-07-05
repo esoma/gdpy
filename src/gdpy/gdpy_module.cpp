@@ -57,7 +57,7 @@ VariantWrapper_call_method(PyObject *self, PyObject *args)
         return 0;
     }
     
-    auto arg_count = PySequence_Length(py_args);
+    auto arg_count = PyTuple_Size(py_args);
     if (arg_count == -1){ return 0; }
     
     const char *method_name = PyUnicode_AsUTF8(py_method_name);
@@ -66,10 +66,9 @@ VariantWrapper_call_method(PyObject *self, PyObject *args)
     std::vector<const Variant*> v_args(arg_count);
     for (Py_ssize_t i = 0; i < arg_count; i++)
     {
-        auto py_arg = (VariantWrapper *)PySequence_GetItem(py_args, i);
+        auto py_arg = (VariantWrapper *)PyTuple_GET_ITEM(py_args, i);
         if (!py_arg){ return 0; }
         v_args[i] = py_arg->variant;
-        Py_DECREF(py_arg);
     }
     
     Callable::CallError error;
@@ -268,7 +267,7 @@ call_method_bind(PyObject *self, PyObject *args)
         return 0;
     }
     
-    auto arg_count = PySequence_Length(py_args);
+    auto arg_count = PyTuple_Size(py_args);
     if (arg_count == -1){ return 0; }
 
     auto method_bind = (MethodBind *)PyCapsule_GetPointer(
@@ -280,10 +279,9 @@ call_method_bind(PyObject *self, PyObject *args)
     std::vector<const Variant*> v_args(arg_count);
     for (Py_ssize_t i = 0; i < arg_count; i++)
     {
-        auto py_arg = (VariantWrapper *)PySequence_GetItem(py_args, i);
+        auto py_arg = (VariantWrapper *)PyTuple_GET_ITEM(py_args, i);
         if (!py_arg){ return 0; }
         v_args[i] = py_arg->variant;
-        Py_DECREF(py_arg);
     }
 
     Object *instance = 0;

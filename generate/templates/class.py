@@ -101,7 +101,7 @@ class {{ name }}
         method = class_db_get_method("{{ name }}", "{{ method["name"] }}")
         return_variant = call_method_bind(
             method,
-            None, [
+            None, (
 {%- for argument in method["arguments"] %}
             create_variant(
                 {{ safe_token(argument["name"]) }},
@@ -111,10 +111,10 @@ class {{ name }}
 {%- if method["is_vararg"] %}
             *varargs,
 {%- endif %}
-        ])
+        ))
 {% else %}
         return_variant = self._gdpy_variant.call_method(
-            "{{ method["name"] }}", [
+            "{{ method["name"] }}", (
 {%- for argument in method["arguments"] %}
             create_variant(
                 {{ safe_token(argument["name"]) }},
@@ -124,7 +124,7 @@ class {{ name }}
 {%- if method["is_vararg"] %}
             *varargs,
 {%- endif %}
-        ])
+        ))
 {% endif %}
 {%- if "return_value" in method %}
         return narrow_variant_to(
