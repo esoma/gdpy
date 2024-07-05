@@ -5,7 +5,7 @@ __all__ = ["{{ name }}"]
 
 from enum import IntEnum, IntFlag
 from typing import Final, Any, TYPE_CHECKING
-from _gdpy import call_method_bind, class_db_get_method, Variant
+from _gdpy import call_method_bind, class_db_get_method, VariantWrapper
 from gdpy._narrow import narrow_variant_to
 
 {% if annotation_imports %}
@@ -35,7 +35,7 @@ class {{ name }}
     pass
     
 {% if not inherits %}
-    _gdpy_variant: Variant | None = None
+    _gdpy_variant: VariantWrapper | None = None
     
     def free(self) -> None:
         if self._gdpy_variant is not None:
@@ -52,7 +52,7 @@ class {{ name }}
             return repr(self)
         return self.to_string()
         
-    def __init__(self, *, _gdpy_variant: Variant):
+    def __init__(self, *, _gdpy_variant: VariantWrapper):
         self._gdpy_variant = _gdpy_variant
 {%- endif %}
 
@@ -88,7 +88,7 @@ class {{ name }}
 {%- endif -%},
 {%- endfor %}
 {%- if method["is_vararg"] %}
-        *varargs: Variant,
+        *varargs: VariantWrapper,
 {%- endif %}
     ) -> (
 {%- if "return_value" in method -%}

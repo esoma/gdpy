@@ -4,11 +4,11 @@ from __future__ import annotations
 __all__ = ["{{ name }}"]
 
 from typing import Any
-from _gdpy import Variant
+from _gdpy import VariantWrapper
 from gdpy._narrow import narrow_variant_to
 
 class {{ name }}:
-    _gdpy_variant: Variant | None = None
+    _gdpy_variant: VariantWrapper | None = None
     
     def __str__(self) -> None:
         try:
@@ -17,7 +17,7 @@ class {{ name }}:
             return repr(self)
         return self.to_string()
         
-    def __init__(self, *args, _gdpy_variant: Variant = None, **kwargs):
+    def __init__(self, *args, _gdpy_variant: VariantWrapper = None, **kwargs):
         self._gdpy_variant = _gdpy_variant
 
 {% for method in methods %}
@@ -27,7 +27,7 @@ class {{ name }}:
         {{ safe_token(argument["name"]) }}: {{ godot_type_name_to_python(argument["type"]) }},
 {%- endfor %}
 {%- if method["is_vararg"] %}
-        *varargs: Variant,
+        *varargs: VariantWrapper,
 {%- endif %}
     ) -> (
 {%- if "return_value" in method -%}
