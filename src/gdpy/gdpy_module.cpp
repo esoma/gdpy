@@ -122,6 +122,12 @@ VariantWrapper_create_int(PyObject *self, PyObject *obj)
 }
 
 static PyObject *
+VariantWrapper_create_nil(PyObject *self, PyObject *obj)
+{
+    return VariantWrapper_create(Variant());
+}
+
+static PyObject *
 VariantWrapper_create_String(PyObject *self, PyObject *obj)
 {
     auto value = PyUnicode_AsUTF8(obj);
@@ -169,6 +175,7 @@ static PyMethodDef VariantWrapper_method[] = {
     {"call_method", (PyCFunction)VariantWrapper_call_method, METH_VARARGS},
     {"create_bool", (PyCFunction)VariantWrapper_create_bool, METH_O | METH_STATIC},
     {"create_int", (PyCFunction)VariantWrapper_create_int, METH_O | METH_STATIC},
+    {"create_nil", (PyCFunction)VariantWrapper_create_nil, METH_NOARGS | METH_STATIC},
     {"create_String", (PyCFunction)VariantWrapper_create_String, METH_O | METH_STATIC},
     {"narrow_bool", (PyCFunction)VariantWrapper_narrow_bool, METH_NOARGS},
     {"narrow_float", (PyCFunction)VariantWrapper_narrow_float, METH_NOARGS},

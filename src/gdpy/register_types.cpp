@@ -17,7 +17,8 @@ PythonScriptLanguage *python_script_language = 0;
 Ref<PythonResourceFormatLoader> python_resource_format_loader;
 Ref<PythonResourceFormatSaver> python_resource_format_saver;
 
-void initialize_gdpy_module(ModuleInitializationLevel p_level) {
+void initialize_gdpy_module(ModuleInitializationLevel p_level)
+{
     if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS)
     {
         std::cout << "init gdpy" << std::endl;
@@ -59,7 +60,8 @@ void initialize_gdpy_module(ModuleInitializationLevel p_level) {
     }
 }
 
-void uninitialize_gdpy_module(ModuleInitializationLevel p_level) {
+void uninitialize_gdpy_module(ModuleInitializationLevel p_level)
+{
     if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS)
     {
         std::cout << "deinit gdpy" << std::endl;

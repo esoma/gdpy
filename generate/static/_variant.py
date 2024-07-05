@@ -8,12 +8,13 @@ class _InvalidConversion(RuntimeError):
     pass
     
 def create_variant(obj: Any, target: str) -> VariantWrapper:
+    if obj is None:
+        return VariantWrapper.create_nil()
     try:
         method = getattr(VariantWrapper, f"create_{target}")
     except AttributeError:
         raise RuntimeError(f"unable to convert to {target}")
     return method(obj)
-    
 
 def narrow_variant_to(variant: VariantWrapper, target: Any) -> Any:
     if variant is None:
