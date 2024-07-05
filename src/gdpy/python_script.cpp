@@ -373,6 +373,63 @@ void PythonScript::get_script_property_list(List<PropertyInfo> *r_list) const
                 return;
             }
         }
+        {
+            auto py_hint = PyObject_GetAttrString(py_property_info, "hint");
+            if (!py_hint)
+            {
+                Py_DECREF(properties);
+                PyErr_Clear();
+                std::cout << "failed to get property hint" << std::endl;
+                return;
+            }
+            property_info.hint = (PropertyHint)PyLong_AsLong(py_hint);
+            Py_DECREF(py_hint);
+            if (PyErr_Occurred())
+            {
+                Py_DECREF(properties);
+                PyErr_Clear();
+                std::cout << "failed to convert property hint" << std::endl;
+                return;
+            }
+        }
+        {
+            auto py_hint_string = PyObject_GetAttrString(py_property_info, "hint_string");
+            if (!py_hint_string)
+            {
+                Py_DECREF(properties);
+                PyErr_Clear();
+                std::cout << "failed to get property hint_string" << std::endl;
+                return;
+            }
+            property_info.hint_string = PyUnicode_AsUTF8(py_hint_string);
+            Py_DECREF(py_hint_string);
+            if (PyErr_Occurred())
+            {
+                Py_DECREF(properties);
+                PyErr_Clear();
+                std::cout << "failed to convert property hint_string" << std::endl;
+                return;
+            }
+        }
+        {
+            auto py_usage = PyObject_GetAttrString(py_property_info, "usage");
+            if (!py_usage)
+            {
+                Py_DECREF(properties);
+                PyErr_Clear();
+                std::cout << "failed to get property usage" << std::endl;
+                return;
+            }
+            property_info.usage = PyLong_AsLong(py_usage);
+            Py_DECREF(py_usage);
+            if (PyErr_Occurred())
+            {
+                Py_DECREF(properties);
+                PyErr_Clear();
+                std::cout << "failed to convert property usage" << std::endl;
+                return;
+            }
+        }
         r_list->push_back(property_info);
     }
 

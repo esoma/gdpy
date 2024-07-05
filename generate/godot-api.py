@@ -66,11 +66,12 @@ with open("vendor/godot-cpp/gdextension/extension_api.json", "r") as f:
     godot_api = json.load(f)
 
 for enum in godot_api["global_enums"]:
-    prefix = ""
+    private = ""
     if enum["name"].startswith("Variant."):
-        prefix = "_"
+        private = "_"
         enum["name"] = "Variant" + enum["name"].removeprefix("Variant.")
-    with open(build_dir / f"{prefix}{enum['name'].lower()}.py", "w") as f:
+        
+    with open(build_dir / f"{private}{enum['name'].lower()}.py", "w") as f:
         f.write(enum_template.render(**enum))
         
 for builtin in godot_api["builtin_classes"]:
