@@ -64,10 +64,6 @@ def get_module_script(module_name):
     return _scripts[module_name]
     
     
-def get_properties(obj: Any) -> Mapping[str, Property]:
-    return _properties[obj]
-    
-    
 def set_property_value(obj: Any, name: str, variant_value: VariantWrapper) -> bool:
     try:
         property = _properties[obj.__class__][name]
@@ -77,6 +73,21 @@ def set_property_value(obj: Any, name: str, variant_value: VariantWrapper) -> bo
     setattr(obj, name, value)
     return True
     
+def get_property_default_value(
+    module_name: str,
+    property_name: str
+) -> VariantWrapper | None:
+    script = get_module_script(module_name)
+    try:
+        property = _properties[script][property_name]
+    except KeyError:
+        return None
+    if property.has_default:
+        return None
+    return VariantWrapper.create_from_type(
+        property.default,
+        property.variant_type,
+    )
     
 def get_property_value(obj: Any, name: str) -> VariantWrapper:
     try:

@@ -70,7 +70,7 @@ const
     if (!variant_wrapper){ REPORT_PYTHON_ERROR(); return false; }
     
     auto variant = VariantWrapper_get_variant(variant_wrapper);
-    if (!variant){ REPORT_PYTHON_ERROR(); return false; }    
+    if (!variant){ REPORT_PYTHON_ERROR(); return false; }
     r_ret = *variant;
     
     return true;

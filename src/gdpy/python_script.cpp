@@ -329,30 +329,32 @@ PythonScript::get_property_default_value(
 const
 {
     PythonGil python_gil;
-    auto func = get_analyze_function("get_property_default_value");
-    if (!func)
-    {
-        PyErr_Clear();
-        std::cout << "failed to find gdpy._analyze.get_property_default_value" << std::endl;
-        return false;
-    }
-    auto result = PyObject_CallFunction(
-        func,
+    
+    PythonRef script_module(PyImport_ImportModule("gdpy._script"));
+    if (!script_module){ REPORT_PYTHON_ERROR(); return false; }
+
+    PythonRef get_property_default_value(PyObject_GetAttrString(
+        script_module,
+        "get_property_default_value"
+    ));
+    script_module.release();
+    if (!get_property_default_value){ REPORT_PYTHON_ERROR(); return false; }
+
+    PythonRef default_value(PyObject_CallFunction(
+        get_property_default_value,
         "ss",
         module_name.c_str(),
         String(p_property).utf8().get_data()
-    );
-    Py_DECREF(func);
-    if (!result)
-    {
-        auto exception = PyErr_GetRaisedException();
-        PyErr_Clear();
-        PyErr_DisplayException(exception);
-        Py_DECREF(exception);
-        return false;
-    }
-    Py_DECREF(result);
-    return false;
+    ));
+    get_property_default_value.release();
+    if (!default_value){ REPORT_PYTHON_ERROR(); return false; }
+    if (default_value == Py_None){ return false; }
+
+    auto variant = VariantWrapper_get_variant(default_value);
+    if (!variant){ REPORT_PYTHON_ERROR(); return false; }    
+    r_value = *variant;
+
+    return true;
 }
 
 
