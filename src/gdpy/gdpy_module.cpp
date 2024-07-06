@@ -21,7 +21,7 @@ static PyTypeObject VariantWrapperType = {
 };
 
 PyObject *
-VariantWrapper_create(Variant &variant)
+VariantWrapper_create(const Variant &variant)
 {
     if (
         variant.get_type() == Variant::Type::NIL ||

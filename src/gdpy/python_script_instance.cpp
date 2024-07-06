@@ -1,6 +1,7 @@
 
 #include "gdpy_module.h"
 #include "python_gil.h"
+#include "python_error.h"
 #include "python_script_instance.h"
 #include "python_script_language.h"
 #include "python_ref.h"
@@ -12,8 +13,31 @@ PythonScriptInstance::set(
     const Variant &p_value
 )
 {
-    std::cout << "PythonScriptInstance::set" << std::endl;
-    return false;
+    PythonGil python_gil;
+    
+    PythonRef script_module(PyImport_ImportModule("gdpy._script"));
+    if (!script_module.ref){ REPORT_PYTHON_ERROR(); return false; }
+    
+    PythonRef set_property_value(PyObject_GetAttrString(
+        script_module.ref,
+        "set_property_value"
+    ));
+    script_module.release();
+    if (!set_property_value.ref){ REPORT_PYTHON_ERROR(); return false; }
+    
+    PythonRef py_value(VariantWrapper_create(p_value));
+    if (!py_value.ref){ REPORT_PYTHON_ERROR(); return false; }
+    
+    PythonRef success(PyObject_CallFunction(
+        set_property_value.ref,
+        "OsO",
+        py_instance,
+        String(p_name).utf8().get_data(),
+        py_value.ref
+    ));
+    if (!success.ref){ REPORT_PYTHON_ERROR(); return false; }
+    
+    return success.ref == Py_True;
 }
 
 
@@ -33,23 +57,20 @@ const
     ));
     if (!code.ref)
     {
-        PyErr_Clear();
-        ERR_PRINT("failed to create code object");
+        REPORT_PYTHON_ERROR();
         return false;
     }
 
     PythonRef dict(PyDict_New());
     if (!dict.ref)
     {
-        PyErr_Clear();
-        ERR_PRINT("failed to create PythonScript dict");
+        REPORT_PYTHON_ERROR();
         return false;
     }
 
     if (PyDict_SetItemString(dict.ref, "instance", py_instance) != 0)
     {
-        PyErr_Clear();
-        ERR_PRINT("failed to add instance to script dict");
+        REPORT_PYTHON_ERROR();
         return false;
     }
     
@@ -62,10 +83,7 @@ const
     code.release();
     if (!ret.ref)
     {
-        PythonRef exception(PyErr_GetRaisedException());
-        PyErr_Clear();
-        PyErr_DisplayException(exception.ref);
-        ERR_PRINT("script failed to execute");
+        REPORT_PYTHON_ERROR();
         return false;
     }
     
@@ -73,18 +91,14 @@ const
     dict.release();
     if (!py_variant.ref)
     {
-        PyErr_Clear();
-        ERR_PRINT("variant not found");
+        REPORT_PYTHON_ERROR();
         return false;
     }
     
     auto variant = VariantWrapper_get_variant(py_variant.ref);
     if (!variant)
     {
-        PythonRef exception(PyErr_GetRaisedException());
-        PyErr_Clear();
-        PyErr_DisplayException(exception.ref);
-        ERR_PRINT("failed to get variant");
+        REPORT_PYTHON_ERROR();
         return false;
     }    
     r_ret = *variant;

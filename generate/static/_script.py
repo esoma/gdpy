@@ -10,11 +10,13 @@ from typing import Annotated
 from gdpy.propertyhint import PropertyHint
 from gdpy.propertyusageflags import PropertyUsageFlags
 from gdpy._varianttype import VariantType
+from gdpy._variant import narrow_variant_to
 from _gdpy import VariantWrapper
 
 
 class Property(NamedTuple):
     type: Any
+    variant_type: VariantType
     has_default: bool
     default: Any
     hint: PropertyHint
@@ -46,6 +48,7 @@ def script(obj):
             default = None
             has_default = False
         properties[k] = Property(
+            type,
             _type_to_variant_type(type),
             has_default,
             default,
@@ -65,22 +68,28 @@ def get_properties(obj: Any) -> Mapping[str, Property]:
     return _properties[obj]
     
     
+def set_property_value(obj: Any, name: str, variant_value: VariantWrapper) -> bool:
+    try:
+        property = get_properties(obj.__class__)[name]
+    except KeyError:
+        return False
+    value = narrow_variant_to(variant_value, property.type)
+    setattr(obj, name, value)
+    return True
+    
+    
 def get_property_value(obj: Any, name: str) -> VariantWrapper:
-    print(obj, name)
     try:
         value = getattr(obj, name)
     except AttributeError:
-        print("attr error")
         return VariantWrapper.create_nil()
     try:
         property = get_properties(obj.__class__)[name]
     except KeyError:
-        print("property key error")
         return VariantWrapper.create_nil()
-    print(value, property.type, property.type)
     return VariantWrapper.create_from_type(
         value,
-        property.type,
+        property.variant_type,
     )
     
     

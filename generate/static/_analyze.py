@@ -32,7 +32,7 @@ def get_properties(module_name: str) -> tuple[PropertyInfo, ...]:
     property_info: list[PropertyInfo] = []
     for name, property in get_properties_(script).items():
         property_info.append(PropertyInfo(
-            property.type,
+            property.variant_type,
             name,
             script.__name__,
             property.hint,
