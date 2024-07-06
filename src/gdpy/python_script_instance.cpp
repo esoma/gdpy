@@ -15,8 +15,6 @@ PythonScriptInstance::set(
 {
     PythonGil python_gil;
     
-    std::cout << "set " << String(p_name).utf8().get_data() << std::endl;
-    
     PythonRef script_module(PyImport_ImportModule("gdpy._script"));
     if (!script_module){ REPORT_PYTHON_ERROR(); return false; }
     
@@ -27,15 +25,15 @@ PythonScriptInstance::set(
     script_module.release();
     if (!set_property_value){ REPORT_PYTHON_ERROR(); return false; }
     
-    PythonRef py_value(VariantWrapper_create(p_value));
-    if (!py_value){ REPORT_PYTHON_ERROR(); return false; }
+    PythonRef variant_wrapper(VariantWrapper_create(p_value));
+    if (!variant_wrapper){ REPORT_PYTHON_ERROR(); return false; }
     
     PythonRef success(PyObject_CallFunction(
         set_property_value,
         "OsO",
         py_instance,
         String(p_name).utf8().get_data(),
-        (PyObject *)py_value
+        (PyObject *)variant_wrapper
     ));
     if (!success){ REPORT_PYTHON_ERROR(); return false; }
     
@@ -52,57 +50,27 @@ const
 {
     PythonGil python_gil;
     
-    PythonRef code(PyUnicode_FromFormat(
-        "from gdpy._script import get_property_value;"
-        "variant = get_property_value(instance, '%s')",
+    PythonRef script_module(PyImport_ImportModule("gdpy._script"));
+    if (!script_module){ REPORT_PYTHON_ERROR(); return false; }
+
+    PythonRef get_property_value(PyObject_GetAttrString(
+        script_module,
+        "get_property_value"
+    ));
+    script_module.release();
+    if (!get_property_value){ REPORT_PYTHON_ERROR(); return false; }
+    
+    PythonRef variant_wrapper(PyObject_CallFunction(
+        get_property_value,
+        "Os",
+        py_instance,
         String(p_name).utf8().get_data()
     ));
-    if (!code)
-    {
-        REPORT_PYTHON_ERROR();
-        return false;
-    }
-
-    PythonRef dict(PyDict_New());
-    if (!dict)
-    {
-        REPORT_PYTHON_ERROR();
-        return false;
-    }
-
-    if (PyDict_SetItemString(dict, "instance", py_instance) != 0)
-    {
-        REPORT_PYTHON_ERROR();
-        return false;
-    }
+    get_property_value.release();
+    if (!variant_wrapper){ REPORT_PYTHON_ERROR(); return false; }
     
-    PythonRef ret(PyRun_String(
-        PyUnicode_AsUTF8(code),
-        Py_file_input,
-        dict,
-        dict
-    ));
-    code.release();
-    if (!ret)
-    {
-        REPORT_PYTHON_ERROR();
-        return false;
-    }
-    
-    PythonRef py_variant(PyDict_GetItemString(dict, "variant"), false);
-    dict.release();
-    if (!py_variant)
-    {
-        REPORT_PYTHON_ERROR();
-        return false;
-    }
-    
-    auto variant = VariantWrapper_get_variant(py_variant);
-    if (!variant)
-    {
-        REPORT_PYTHON_ERROR();
-        return false;
-    }    
+    auto variant = VariantWrapper_get_variant(variant_wrapper);
+    if (!variant){ REPORT_PYTHON_ERROR(); return false; }    
     r_ret = *variant;
     
     return true;

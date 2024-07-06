@@ -70,7 +70,7 @@ def get_properties(obj: Any) -> Mapping[str, Property]:
     
 def set_property_value(obj: Any, name: str, variant_value: VariantWrapper) -> bool:
     try:
-        property = get_properties(obj.__class__)[name]
+        property = _properties[obj.__class__][name]
     except KeyError:
         return False
     value = narrow_variant_to(variant_value, property.type)
@@ -84,13 +84,36 @@ def get_property_value(obj: Any, name: str) -> VariantWrapper:
     except AttributeError:
         return VariantWrapper.create_nil()
     try:
-        property = get_properties(obj.__class__)[name]
+        property = _properties[obj.__class__][name]
     except KeyError:
         return VariantWrapper.create_nil()
     return VariantWrapper.create_from_type(
         value,
         property.variant_type,
     )
+    
+class _PropertyInfo(NamedTuple):
+    type: VariantType
+    name: str
+    class_name: str
+    hint: PropertyHint
+    hint_string: str
+    usage: PropertyUsageFlags
+    
+def get_properties(module_name: str) -> tuple[_PropertyInfo, ...]:
+    script = get_module_script(module_name)
+    property_info: list[_PropertyInfo] = []
+    for name, property in _properties[script].items():
+        property_info.append(_PropertyInfo(
+            property.variant_type,
+            name,
+            script.__name__,
+            property.hint,
+            property.hint_string,
+            property.usage,
+        ))
+    return tuple(property_info)
+
     
     
 class Export:

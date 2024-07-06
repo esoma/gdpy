@@ -6,6 +6,7 @@
 #include "python_script_instance.h"
 #include "python_script_language.h"
 #include "python_ref.h"
+#include "python_error.h"
 #include "python_gil.h"
 
 #include "core/io/file_access.h"
@@ -364,158 +365,74 @@ void PythonScript::get_script_method_list(List<MethodInfo> *r_list) const
 void PythonScript::get_script_property_list(List<PropertyInfo> *r_list) const
 {
     PythonGil python_gil;
-    auto func = get_analyze_function("get_properties");
-    if (!func)
-    {
-        PyErr_Clear();
-        std::cout << "failed to find gdpy._analyze.get_properties" << std::endl;
-        return;
-    }
-    auto properties = PyObject_CallFunction(
-        func,
+    
+    PythonRef script_module(PyImport_ImportModule("gdpy._script"));
+    if (!script_module){ REPORT_PYTHON_ERROR(); return; }
+
+    PythonRef get_properties(PyObject_GetAttrString(
+        script_module,
+        "get_properties"
+    ));
+    script_module.release();
+    if (!get_properties){ REPORT_PYTHON_ERROR(); return; }
+    
+    PythonRef properties(PyObject_CallFunction(
+        get_properties,
         "s",
         module_name.c_str()
-    );
-    Py_DECREF(func);
-    if (!properties)
-    {
-        auto exception = PyErr_GetRaisedException();
-        PyErr_Clear();
-        PyErr_DisplayException(exception);
-        Py_DECREF(exception);
-        return;
-    }
+    ));
+    get_properties.release();
+    if (!properties){ REPORT_PYTHON_ERROR(); return; }
     
     auto property_count = PyTuple_Size(properties);
-    if (PyErr_Occurred())
-    {
-        PyErr_Clear();
-        std::cout << "failed to get number of properties" << std::endl;
-        return;
-    }
-    
+    if (PyErr_Occurred()){ REPORT_PYTHON_ERROR(); return; }
+
     for (Py_ssize_t i = 0; i < property_count; i++)
     {
         auto py_property_info = PyTuple_GET_ITEM(properties, i);
         PropertyInfo property_info;
         {
-            auto py_type = PyObject_GetAttrString(py_property_info, "type");
-            if (!py_type)
-            {
-                Py_DECREF(properties);
-                PyErr_Clear();
-                std::cout << "failed to get property type" << std::endl;
-                return;
-            }
+            PythonRef py_type(PyObject_GetAttrString(py_property_info, "type"));
+            if (!py_type){ REPORT_PYTHON_ERROR(); return; }
+            
             property_info.type = (Variant::Type)PyLong_AsLong(py_type);
-            Py_DECREF(py_type);
-            if (PyErr_Occurred())
-            {
-                Py_DECREF(properties);
-                PyErr_Clear();
-                std::cout << "failed to convert property type" << std::endl;
-                return;
-            }
+            if (PyErr_Occurred()){ REPORT_PYTHON_ERROR(); return; }
         }
         {
-            auto py_name = PyObject_GetAttrString(py_property_info, "name");
-            if (!py_name)
-            {
-                PyErr_Clear();
-                std::cout << "failed to get property name" << std::endl;
-                return;
-            }
-            property_info.name = PyUnicode_AsUTF8(py_name);
-            Py_DECREF(py_name);
-            if (PyErr_Occurred())
-            {
-                Py_DECREF(properties);
-                PyErr_Clear();
-                std::cout << "failed to convert property name" << std::endl;
-                return;
-            }
+            PythonRef py_name(PyObject_GetAttrString(py_property_info, "name"));
+            if (!py_name){ REPORT_PYTHON_ERROR(); return; }
+            auto name = PyUnicode_AsUTF8(py_name);
+            if (!name){ REPORT_PYTHON_ERROR(); return; }
+            property_info.name = name;
         }
         {
-            auto py_class_name = PyObject_GetAttrString(py_property_info, "class_name");
-            if (!py_class_name)
-            {
-                Py_DECREF(properties);
-                PyErr_Clear();
-                std::cout << "failed to get property class_name" << std::endl;
-                return;
-            }
-            property_info.class_name = PyUnicode_AsUTF8(py_class_name);
-            Py_DECREF(py_class_name);
-            if (PyErr_Occurred())
-            {
-                Py_DECREF(properties);
-                PyErr_Clear();
-                std::cout << "failed to convert property class_name" << std::endl;
-                return;
-            }
+            PythonRef py_class_name(PyObject_GetAttrString(py_property_info, "class_name"));
+            if (!py_class_name){ REPORT_PYTHON_ERROR(); return; }
+            auto class_name = PyUnicode_AsUTF8(py_class_name);
+            if (!class_name){ REPORT_PYTHON_ERROR(); return; }
+            property_info.class_name = class_name;
         }
         {
-            auto py_hint = PyObject_GetAttrString(py_property_info, "hint");
-            if (!py_hint)
-            {
-                Py_DECREF(properties);
-                PyErr_Clear();
-                std::cout << "failed to get property hint" << std::endl;
-                return;
-            }
+            PythonRef py_hint(PyObject_GetAttrString(py_property_info, "hint"));
+            if (!py_hint){ REPORT_PYTHON_ERROR(); return; }
             property_info.hint = (PropertyHint)PyLong_AsLong(py_hint);
-            Py_DECREF(py_hint);
-            if (PyErr_Occurred())
-            {
-                Py_DECREF(properties);
-                PyErr_Clear();
-                std::cout << "failed to convert property hint" << std::endl;
-                return;
-            }
+            if (PyErr_Occurred()){ REPORT_PYTHON_ERROR(); return; }
         }
         {
-            auto py_hint_string = PyObject_GetAttrString(py_property_info, "hint_string");
-            if (!py_hint_string)
-            {
-                Py_DECREF(properties);
-                PyErr_Clear();
-                std::cout << "failed to get property hint_string" << std::endl;
-                return;
-            }
-            property_info.hint_string = PyUnicode_AsUTF8(py_hint_string);
-            Py_DECREF(py_hint_string);
-            if (PyErr_Occurred())
-            {
-                Py_DECREF(properties);
-                PyErr_Clear();
-                std::cout << "failed to convert property hint_string" << std::endl;
-                return;
-            }
+            PythonRef py_hint_string(PyObject_GetAttrString(py_property_info, "hint_string"));
+            if (!py_hint_string){ REPORT_PYTHON_ERROR(); return; }
+            auto hint_string = PyUnicode_AsUTF8(py_hint_string);
+            if (!hint_string){ REPORT_PYTHON_ERROR(); return; }
+            property_info.hint_string = hint_string;
         }
         {
-            auto py_usage = PyObject_GetAttrString(py_property_info, "usage");
-            if (!py_usage)
-            {
-                Py_DECREF(properties);
-                PyErr_Clear();
-                std::cout << "failed to get property usage" << std::endl;
-                return;
-            }
+            PythonRef py_usage(PyObject_GetAttrString(py_property_info, "usage"));
+            if (!py_usage){ REPORT_PYTHON_ERROR(); return; }
             property_info.usage = PyLong_AsLong(py_usage);
-            Py_DECREF(py_usage);
-            if (PyErr_Occurred())
-            {
-                Py_DECREF(properties);
-                PyErr_Clear();
-                std::cout << "failed to convert property usage" << std::endl;
-                return;
-            }
+            if (PyErr_Occurred()){ REPORT_PYTHON_ERROR(); return; }
         }
         r_list->push_back(property_info);
     }
-
-    Py_DECREF(properties);
-
     return;
 }
 

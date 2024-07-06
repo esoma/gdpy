@@ -18,25 +18,3 @@ def get_property_default_value(
     except KeyError:
         return (False, None)
     return (property.has_default, property.default)
-    
-class PropertyInfo(NamedTuple):
-    type: VariantType
-    name: str
-    class_name: str
-    hint: PropertyHint
-    hint_string: str
-    usage: PropertyUsageFlags
-    
-def get_properties(module_name: str) -> tuple[PropertyInfo, ...]:
-    script = get_module_script(module_name)
-    property_info: list[PropertyInfo] = []
-    for name, property in get_properties_(script).items():
-        property_info.append(PropertyInfo(
-            property.variant_type,
-            name,
-            script.__name__,
-            property.hint,
-            property.hint_string,
-            property.usage,
-        ))
-    return tuple(property_info)

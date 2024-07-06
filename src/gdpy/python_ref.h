@@ -16,6 +16,7 @@ public:
     
     operator bool() const;
     operator PyObject *() const;
+    operator PyTupleObject *() const;
 };
 
 #endif 

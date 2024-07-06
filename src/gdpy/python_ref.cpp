@@ -38,3 +38,9 @@ PythonRef::operator PyObject *() const
 {
     return ref;
 }
+
+
+PythonRef::operator PyTupleObject *() const
+{
+    return (PyTupleObject *)ref;
+}
