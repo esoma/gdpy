@@ -1,6 +1,9 @@
 #ifndef PYTHON_SCRIPT_INSTANCE_H
 #define PYTHON_SCRIPT_INSTANCE_H
 
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
+
 #include "core/object/script_language.h"
 
 #include "python_script.h"
@@ -10,6 +13,7 @@ class PythonScriptInstance : public ScriptInstance
 private:
     friend PythonScript;
     Ref<PythonScript> script;
+    PyObject *py_instance;
 public:
     virtual bool set(const StringName &p_name, const Variant &p_value);
     virtual bool get(const StringName &p_name, Variant &r_ret) const;
@@ -29,6 +33,9 @@ public:
     virtual Ref<Script> get_script() const;
     
     virtual ScriptLanguage *get_language();
+    
+    PythonScriptInstance();
+    ~PythonScriptInstance();
 };
 
 #endif 

@@ -20,7 +20,7 @@ static PyTypeObject VariantWrapperType = {
     0
 };
 
-static PyObject *
+PyObject *
 VariantWrapper_create(Variant &variant)
 {
     if (
@@ -34,6 +34,26 @@ VariantWrapper_create(Variant &variant)
     if (!self){ return 0; }
     self->variant = new Variant(variant);
     return (PyObject *)self;
+}
+
+Variant *
+VariantWrapper_get_variant(PyObject *self)
+{
+    auto is_instance = PyObject_IsInstance(
+        self,
+        (PyObject *)&VariantWrapperType
+    );
+    if (is_instance == -1){ return 0; }
+    if (is_instance == 0)
+    {
+        PyErr_Format(
+            PyExc_TypeError,
+            "expected VariantWrapper (got %R)",
+            self
+        );
+        return 0;
+    }
+    return ((VariantWrapper *)self)->variant;
 }
 
 static void
@@ -75,7 +95,13 @@ VariantWrapper_call_method(PyObject *self, PyObject *args)
         if (is_instance == -1){ return 0; }
         if (is_instance == 0)
         {
-            PyErr_Format(PyExc_TypeError, "expected VariantWrapper");
+            PyErr_Format(
+                PyExc_TypeError,
+                "expected VariantWrapper (got %R) for arg %i in call to %U",
+                py_arg,
+                i,
+                py_method_name
+            );
             return 0;
         }
         v_args[i] = py_arg->variant;
@@ -133,7 +159,10 @@ VariantWrapper_create_int(PyObject *self, PyObject *obj)
 static PyObject *
 VariantWrapper_create_nil(PyObject *self, PyObject *obj)
 {
-    return VariantWrapper_create(Variant());
+    VariantWrapper *vw = (VariantWrapper *)VariantWrapperType.tp_alloc(&VariantWrapperType, 0);
+    if (!vw){ return 0; }
+    vw->variant = new Variant();
+    return (PyObject *)vw;
 }
 
 static PyObject *
@@ -142,6 +171,23 @@ VariantWrapper_create_String(PyObject *self, PyObject *obj)
     auto value = PyUnicode_AsUTF8(obj);
     if (!value){ return 0; }
     return VariantWrapper_create(Variant(String(value)));
+}
+
+static PyObject *
+VariantWrapper_create_from_type(PyObject *self, PyObject *args)
+{
+    PyObject *py_object;
+    Variant::Type variant_type;
+    if (!PyArg_ParseTuple(args, "Ol", &py_object, &variant_type))
+    {
+        return 0;
+    }
+    switch(variant_type)
+    {
+        case Variant::Type::INT:
+            return VariantWrapper_create_int(self, py_object);
+    }
+    return VariantWrapper_create_nil(self, py_object);
 }
 
 static PyObject *
@@ -186,6 +232,7 @@ static PyMethodDef VariantWrapper_method[] = {
     {"create_int", (PyCFunction)VariantWrapper_create_int, METH_O | METH_STATIC},
     {"create_nil", (PyCFunction)VariantWrapper_create_nil, METH_NOARGS | METH_STATIC},
     {"create_String", (PyCFunction)VariantWrapper_create_String, METH_O | METH_STATIC},
+    {"create_from_type", (PyCFunction)VariantWrapper_create_from_type, METH_VARARGS | METH_STATIC},
     {"narrow_bool", (PyCFunction)VariantWrapper_narrow_bool, METH_NOARGS},
     {"narrow_float", (PyCFunction)VariantWrapper_narrow_float, METH_NOARGS},
     {"narrow_int", (PyCFunction)VariantWrapper_narrow_int, METH_NOARGS},
@@ -298,7 +345,13 @@ call_method_bind(PyObject *self, PyObject *args)
         if (is_instance == -1){ return 0; }
         if (is_instance == 0)
         {
-            PyErr_Format(PyExc_TypeError, "expected VariantWrapper");
+            PyErr_Format(
+                PyExc_TypeError,
+                "expected VariantWrapper (got %R) for arg %i in call to %s",
+                py_arg,
+                i,
+                String(method_bind->get_name()).utf8().get_data()
+            );
             return 0;
         }
         v_args[i] = py_arg->variant;

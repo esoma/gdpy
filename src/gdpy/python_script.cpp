@@ -1,9 +1,11 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
+#include "gdpy_module.h"
 #include "python_script.h"
 #include "python_script_instance.h"
 #include "python_script_language.h"
+#include "python_ref.h"
 #include "python_gil.h"
 
 #include "core/io/file_access.h"
@@ -140,6 +142,86 @@ ScriptInstance *PythonScript::instance_create(Object *p_this)
     std::cout << "<PythonScript::instance_create>" << std::endl;
     auto instance = memnew(PythonScriptInstance);
     instance->script = Ref<PythonScript>(this);
+    {
+        PythonGil python_gil;
+        
+        auto *code = PyUnicode_FromFormat(
+            "from gdpy._import import import_script;"
+            "module = import_script('%s', False);"
+            "from gdpy._script import get_module_script;"
+            "script = get_module_script(module.__name__);"
+            "instance = script(_gdpy_variant=variant)",
+            get_path().utf8().get_data()
+        );
+        if (!code)
+        {
+            PyErr_Clear();
+            Py_DECREF(code);
+            ERR_PRINT("failed to create code object");
+            return 0;
+        }
+        
+        auto dict = PyDict_New();
+        if (!dict)
+        {
+            PyErr_Clear();
+            Py_DECREF(code);
+            Py_DECREF(dict);
+            ERR_PRINT("failed to create PythonScript dict");
+            return 0;
+        }
+        
+        auto variant_wrapper = VariantWrapper_create(Variant(p_this));
+        if (!variant_wrapper)
+        {
+            PyErr_Clear();
+            Py_DECREF(code);
+            Py_DECREF(dict);
+            ERR_PRINT("failed to create object VariantWrapper");
+            return 0;
+        }
+        if (PyDict_SetItemString(dict, "variant", variant_wrapper) != 0)
+        {
+            Py_DECREF(variant_wrapper);
+            Py_DECREF(code);
+            Py_DECREF(dict);
+            ERR_PRINT("failed to add variant to script dict");
+            return 0;
+        }
+        Py_DECREF(variant_wrapper);
+        
+        auto ret = PyRun_String(
+            PyUnicode_AsUTF8(code),
+            Py_file_input,
+            dict,
+            dict
+        );
+        Py_DECREF(code);
+        if (!ret)
+        {
+            Py_DECREF(dict);
+            auto exception = PyErr_GetRaisedException();
+            PyErr_Clear();
+            PyErr_DisplayException(exception);
+            Py_DECREF(exception);
+            ERR_PRINT("script failed to execute");
+            return 0;
+        }
+        Py_DECREF(ret);
+        
+        auto py_instance = PyDict_GetItemString(dict, "instance");
+        if (!py_instance)
+        {
+            PyErr_Clear();
+            Py_DECREF(dict);
+            ERR_PRINT("instance not found");
+            return 0;
+        }
+        Py_INCREF(py_instance);
+        Py_DECREF(dict);
+        std::cout << "CREATE " << (void*)py_instance << std::endl;
+        instance->py_instance = py_instance;
+    }
     return instance;
 }
 
@@ -281,7 +363,6 @@ void PythonScript::get_script_method_list(List<MethodInfo> *r_list) const
 
 void PythonScript::get_script_property_list(List<PropertyInfo> *r_list) const
 {
-    std::cout << "<PythonScript::get_script_property_list>" << std::endl;
     PythonGil python_gil;
     auto func = get_analyze_function("get_properties");
     if (!func)

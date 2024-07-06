@@ -10,6 +10,7 @@ from typing import Annotated
 from gdpy.propertyhint import PropertyHint
 from gdpy.propertyusageflags import PropertyUsageFlags
 from gdpy._varianttype import VariantType
+from _gdpy import VariantWrapper
 
 
 class Property(NamedTuple):
@@ -62,6 +63,25 @@ def get_module_script(module_name):
     
 def get_properties(obj: Any) -> Mapping[str, Property]:
     return _properties[obj]
+    
+    
+def get_property_value(obj: Any, name: str) -> VariantWrapper:
+    print(obj, name)
+    try:
+        value = getattr(obj, name)
+    except AttributeError:
+        print("attr error")
+        return VariantWrapper.create_nil()
+    try:
+        property = get_properties(obj.__class__)[name]
+    except KeyError:
+        print("property key error")
+        return VariantWrapper.create_nil()
+    print(value, property.type, property.type)
+    return VariantWrapper.create_from_type(
+        value,
+        property.type,
+    )
     
     
 class Export:

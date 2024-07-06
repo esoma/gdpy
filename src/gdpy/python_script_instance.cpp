@@ -1,6 +1,9 @@
 
+#include "gdpy_module.h"
+#include "python_gil.h"
 #include "python_script_instance.h"
 #include "python_script_language.h"
+#include "python_ref.h"
 #include <iostream>
 
 bool
@@ -9,6 +12,7 @@ PythonScriptInstance::set(
     const Variant &p_value
 )
 {
+    std::cout << "PythonScriptInstance::set" << std::endl;
     return false;
 }
 
@@ -20,7 +24,72 @@ PythonScriptInstance::get(
 )
 const
 {
-    return false;
+    PythonGil python_gil;
+    
+    PythonRef code(PyUnicode_FromFormat(
+        "from gdpy._script import get_property_value;"
+        "variant = get_property_value(instance, '%s')",
+        String(p_name).utf8().get_data()
+    ));
+    if (!code.ref)
+    {
+        PyErr_Clear();
+        ERR_PRINT("failed to create code object");
+        return false;
+    }
+
+    PythonRef dict(PyDict_New());
+    if (!dict.ref)
+    {
+        PyErr_Clear();
+        ERR_PRINT("failed to create PythonScript dict");
+        return false;
+    }
+
+    if (PyDict_SetItemString(dict.ref, "instance", py_instance) != 0)
+    {
+        PyErr_Clear();
+        ERR_PRINT("failed to add instance to script dict");
+        return false;
+    }
+    
+    PythonRef ret(PyRun_String(
+        PyUnicode_AsUTF8(code.ref),
+        Py_file_input,
+        dict.ref,
+        dict.ref
+    ));
+    code.release();
+    if (!ret.ref)
+    {
+        PythonRef exception(PyErr_GetRaisedException());
+        PyErr_Clear();
+        PyErr_DisplayException(exception.ref);
+        ERR_PRINT("script failed to execute");
+        return false;
+    }
+    
+    PythonRef py_variant(PyDict_GetItemString(dict.ref, "variant"), false);
+    dict.release();
+    if (!py_variant.ref)
+    {
+        PyErr_Clear();
+        ERR_PRINT("variant not found");
+        return false;
+    }
+    
+    auto variant = VariantWrapper_get_variant(py_variant.ref);
+    if (!variant)
+    {
+        PythonRef exception(PyErr_GetRaisedException());
+        PyErr_Clear();
+        PyErr_DisplayException(exception.ref);
+        ERR_PRINT("failed to get variant");
+        return false;
+    }    
+    r_ret = *variant;
+    
+    return true;
 }
 
 
@@ -42,6 +111,7 @@ PythonScriptInstance::get_property_type(
 const
 {
     *r_is_valid = false;
+    std::cout << "PythonScriptInstance::get_property_type" << std::endl;
     return Variant::NIL;
 }
 
@@ -52,11 +122,13 @@ PythonScriptInstance::validate_property(
 )
 const
 {
+    //std::cout << "PythonScriptInstance::validate_property" << std::endl;
 }
 
 
 bool PythonScriptInstance::property_can_revert(const StringName &p_name) const
 {
+    std::cout << "PythonScriptInstance::property_can_revert" << std::endl;
     return false;
 }
 
@@ -67,17 +139,20 @@ bool PythonScriptInstance::property_get_revert(
 )
 const
 {
+    std::cout << "PythonScriptInstance::property_get_revert" << std::endl;
     return false;
 }
 
 
 void PythonScriptInstance::get_method_list(List<MethodInfo> *p_list) const
 {
+    std::cout << "PythonScriptInstance::get_method_list" << std::endl;
 }
 
 
 bool PythonScriptInstance::has_method(const StringName &p_method) const
 {
+    std::cout << "PythonScriptInstance::has_method" << std::endl;
     return false;
 }
 
@@ -97,6 +172,7 @@ PythonScriptInstance::callp(
 
 void PythonScriptInstance::notification(int p_notification, bool p_reversed)
 {
+    //std::cout << "PythonScriptInstance::notification" << std::endl;
 }
 
 
@@ -109,4 +185,19 @@ Ref<Script> PythonScriptInstance::get_script() const
 ScriptLanguage *PythonScriptInstance::get_language()
 {
 	return PythonScriptLanguage::get_singleton();
+}
+
+
+PythonScriptInstance::PythonScriptInstance()
+{
+}
+
+PythonScriptInstance::~PythonScriptInstance()
+{
+    if (py_instance)
+    {
+        PythonGil python_gil;
+        Py_DECREF(py_instance);
+        py_instance = 0;
+    }
 }

@@ -4,6 +4,11 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
+#include "core/variant/variant.h"
+
+PyObject *VariantWrapper_create(Variant &variant);
+Variant *VariantWrapper_get_variant(PyObject *self);
+
 extern "C"
 {
     
