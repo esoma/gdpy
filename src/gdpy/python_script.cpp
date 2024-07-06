@@ -9,19 +9,8 @@
 #include "python_error.h"
 #include "python_gil.h"
 
-#include "core/io/file_access.h"
-
 #include <iostream>
 
-static PyObject *get_analyze_function(const char *function_name)
-{
-    auto analyze_module = PyImport_ImportModule("gdpy._analyze");
-    if (!analyze_module){ return 0;}
-    auto func = PyObject_GetAttrString(analyze_module, function_name);
-    Py_DECREF(analyze_module);
-    if (!func){ return 0; }
-    return func;
-}
 
 Error PythonScript::import(bool reload)
 {

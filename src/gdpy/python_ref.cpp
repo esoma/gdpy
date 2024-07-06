@@ -4,7 +4,6 @@
 PythonRef::PythonRef(PyObject *ref, bool strong)
 {
     this->ref = ref;
-    ref_count = 1;
     if (ref && !strong)
     {
         Py_INCREF(ref);
@@ -19,12 +18,11 @@ PythonRef::~PythonRef()
 
 void PythonRef::release()
 {
-    if (!ref){ return; }
-    for(size_t i = 0; i < ref_count; i++)
+    if (ref)
     {
         Py_DECREF(ref);
+        ref = 0;
     }
-    ref = 0;
 }
 
 

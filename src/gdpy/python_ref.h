@@ -8,7 +8,6 @@ class PythonRef
 {
 private:
     PyObject *ref;
-    size_t ref_count;
 public:
     void release();
     PythonRef(PyObject *ref, bool strong = true);
