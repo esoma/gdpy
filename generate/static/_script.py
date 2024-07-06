@@ -12,6 +12,7 @@ from gdpy.propertyusageflags import PropertyUsageFlags
 from gdpy._varianttype import VariantType
 from gdpy._variant import narrow_variant_to
 from _gdpy import VariantWrapper
+import importlib
 
 
 class Property(NamedTuple):
@@ -60,8 +61,8 @@ def script(obj):
     return obj
 
     
-def get_module_script(module_name):
-    return _scripts[module_name]
+def get_module_script(module):
+    return _scripts[module.__name__]
     
     
 def set_property_value(obj: Any, name: str, variant_value: VariantWrapper) -> bool:
@@ -77,7 +78,7 @@ def get_property_default_value(
     module_name: str,
     property_name: str
 ) -> VariantWrapper | None:
-    script = get_module_script(module_name)
+    script = _scripts[module_name]
     try:
         property = _properties[script][property_name]
     except KeyError:
@@ -112,7 +113,7 @@ class _PropertyInfo(NamedTuple):
     usage: PropertyUsageFlags
     
 def get_properties(module_name: str) -> tuple[_PropertyInfo, ...]:
-    script = get_module_script(module_name)
+    script = _scripts[module_name]
     property_info: list[_PropertyInfo] = []
     for name, property in _properties[script].items():
         property_info.append(_PropertyInfo(
@@ -156,3 +157,17 @@ _type_variant_type = {
 }
 def _type_to_variant_type(t) -> VariantType:
     return _type_variant_type.get(t, VariantType.TYPE_NIL)
+
+
+def import_script(name, reload):
+    module_name = _name_to_module_name(name)
+    module = __import__(module_name, fromlist=[""])
+    if reload:
+        importlib.reload(module)
+    return module
+    
+def _name_to_module_name(name):
+    if name.startswith("res://"):
+        name = "gdres/" + name.removeprefix("res://")
+    name = name.removesuffix(".py")
+    return name.replace("/", ".")

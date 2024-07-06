@@ -27,59 +27,29 @@ Error PythonScript::import(bool reload)
 {
     PythonGil python_gil;
     
-    auto *code = PyUnicode_FromFormat(
-        "from gdpy._import import import_script;"
-        "module = import_script('%s', %s)",
-        get_path().utf8().get_data(),
-        reload ? "True" : "False"
-    );
-    if (!code)
-    {
-        Py_DECREF(code);
-        ERR_FAIL_V_MSG(FAILED, "failed to create code object");
-    }
+    PythonRef script_module(PyImport_ImportModule("gdpy._script"));
+    if (!script_module){ REPORT_PYTHON_ERROR(); return FAILED; }
 
-    auto dict = PyDict_New();
-    if (!dict)
-    {
-        Py_DECREF(code);
-        Py_DECREF(dict);
-        ERR_FAIL_V_MSG(FAILED, "failed to create PythonScript dict");
-    }
+    PythonRef import_script(PyObject_GetAttrString(
+        script_module,
+        "import_script"
+    ));
+    if (!import_script){ REPORT_PYTHON_ERROR(); return FAILED; }
     
-    auto ret = PyRun_String(
-        PyUnicode_AsUTF8(code),
-        Py_file_input,
-        dict,
-        dict
-    );
-    Py_DECREF(code);
-    if (!ret)
-    {
-        Py_DECREF(dict);
-        auto exception = PyErr_GetRaisedException();
-        PyErr_Clear();
-        PyErr_DisplayException(exception);
-        Py_DECREF(exception);
-        ERR_FAIL_V_MSG(FAILED, "script failed to execute");
-    }
-    Py_DECREF(ret);
+    PythonRef module(PyObject_CallFunction(
+        import_script,
+        "sO",
+        get_path().utf8().get_data(),
+        reload ? Py_True : Py_False
+    ));
+    import_script.release();
+    if (!module){ REPORT_PYTHON_ERROR(); return FAILED; }
     
-    auto module = PyDict_GetItemString(dict, "module");
-    Py_DECREF(dict);
-    if (!module)
-    {
-        ERR_FAIL_V_MSG(FAILED, "module not found");
-    }
-    auto module_name_py = PyObject_GetAttrString(module, "__name__");
-    Py_DECREF(module);
-    if (!module_name_py)
-    {
-        ERR_FAIL_V_MSG(FAILED, "module name not set");
-    }
+    PythonRef module_name_py(PyObject_GetAttrString(module, "__name__"));
+    module.release();
+    if (!module_name_py){ REPORT_PYTHON_ERROR(); return FAILED; }
     
     module_name = PyUnicode_AsUTF8(module_name_py);
-    Py_DECREF(module_name_py);
 
     return OK;
 }
@@ -140,89 +110,65 @@ StringName PythonScript::get_instance_base_type() const
 
 ScriptInstance *PythonScript::instance_create(Object *p_this)
 {
-    std::cout << "<PythonScript::instance_create>" << std::endl;
+    PythonGil python_gil;
+    
+    PythonRef script_module(PyImport_ImportModule("gdpy._script"));
+    if (!script_module){ REPORT_PYTHON_ERROR(); return 0; }
+
+    PythonRef import_script(PyObject_GetAttrString(
+        script_module,
+        "import_script"
+    ));
+    if (!import_script){ REPORT_PYTHON_ERROR(); return 0; }
+    
+    PythonRef module(PyObject_CallFunction(
+        import_script,
+        "sO",
+        module_name.c_str(),
+        Py_False
+    ));
+    import_script.release();
+    if (!module){ REPORT_PYTHON_ERROR(); return 0; }
+    
+    PythonRef get_module_script(PyObject_GetAttrString(
+        script_module,
+        "get_module_script"
+    ));
+    if (!get_module_script){ REPORT_PYTHON_ERROR(); return 0; }
+    script_module.release();
+    
+    PythonRef script(PyObject_CallFunction(
+        get_module_script,
+        "O",
+        (PyObject *)module
+    ));
+    get_module_script.release();
+    if (!module){ REPORT_PYTHON_ERROR(); return 0; }
+   
+    PythonRef args(PyTuple_New(0));
+    if (!args){ REPORT_PYTHON_ERROR(); return 0; }
+    PythonRef kwargs(PyDict_New());
+    if (!kwargs){ REPORT_PYTHON_ERROR(); return 0; }
+    PythonRef variant_wrapper(VariantWrapper_create(Variant(p_this)));
+    if (!variant_wrapper){ REPORT_PYTHON_ERROR(); return 0; }
+    if (PyDict_SetItemString(kwargs, "_gdpy_variant", variant_wrapper) == -1){ REPORT_PYTHON_ERROR(); return 0; }
+    variant_wrapper.release();
+    
+    PythonRef py_instance(PyObject_Call(
+        script,
+        args,
+        kwargs
+    ));
+    script.release();
+    args.release();
+    kwargs.release();
+    if (!py_instance){ REPORT_PYTHON_ERROR(); return 0; }
+    
     auto instance = memnew(PythonScriptInstance);
     instance->script = Ref<PythonScript>(this);
-    {
-        PythonGil python_gil;
-        
-        auto *code = PyUnicode_FromFormat(
-            "from gdpy._import import import_script;"
-            "module = import_script('%s', False);"
-            "from gdpy._script import get_module_script;"
-            "script = get_module_script(module.__name__);"
-            "instance = script(_gdpy_variant=variant)",
-            get_path().utf8().get_data()
-        );
-        if (!code)
-        {
-            PyErr_Clear();
-            Py_DECREF(code);
-            ERR_PRINT("failed to create code object");
-            return 0;
-        }
-        
-        auto dict = PyDict_New();
-        if (!dict)
-        {
-            PyErr_Clear();
-            Py_DECREF(code);
-            Py_DECREF(dict);
-            ERR_PRINT("failed to create PythonScript dict");
-            return 0;
-        }
-        
-        auto variant_wrapper = VariantWrapper_create(Variant(p_this));
-        if (!variant_wrapper)
-        {
-            PyErr_Clear();
-            Py_DECREF(code);
-            Py_DECREF(dict);
-            ERR_PRINT("failed to create object VariantWrapper");
-            return 0;
-        }
-        if (PyDict_SetItemString(dict, "variant", variant_wrapper) != 0)
-        {
-            Py_DECREF(variant_wrapper);
-            Py_DECREF(code);
-            Py_DECREF(dict);
-            ERR_PRINT("failed to add variant to script dict");
-            return 0;
-        }
-        Py_DECREF(variant_wrapper);
-        
-        auto ret = PyRun_String(
-            PyUnicode_AsUTF8(code),
-            Py_file_input,
-            dict,
-            dict
-        );
-        Py_DECREF(code);
-        if (!ret)
-        {
-            Py_DECREF(dict);
-            auto exception = PyErr_GetRaisedException();
-            PyErr_Clear();
-            PyErr_DisplayException(exception);
-            Py_DECREF(exception);
-            ERR_PRINT("script failed to execute");
-            return 0;
-        }
-        Py_DECREF(ret);
-        
-        auto py_instance = PyDict_GetItemString(dict, "instance");
-        if (!py_instance)
-        {
-            PyErr_Clear();
-            Py_DECREF(dict);
-            ERR_PRINT("instance not found");
-            return 0;
-        }
-        Py_INCREF(py_instance);
-        Py_DECREF(dict);
-        std::cout << "CREATE " << (void*)py_instance << std::endl;
-        instance->py_instance = py_instance;
-    }
+    Py_INCREF(py_instance);
+    instance->py_instance = py_instance;
+
     return instance;
 }
 
