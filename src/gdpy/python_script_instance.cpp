@@ -120,8 +120,26 @@ const
 
 bool PythonScriptInstance::property_can_revert(const StringName &p_name) const
 {
-    std::cout << "PythonScriptInstance::property_can_revert" << std::endl;
-    return false;
+    PythonGil python_gil;
+    
+    PythonRef script_module(PyImport_ImportModule("gdpy._script"));
+    if (!script_module){ REPORT_PYTHON_ERROR(); return false; }
+
+    PythonRef get_property_can_revert(PyObject_GetAttrString(
+        script_module,
+        "get_property_can_revert"
+    ));
+    script_module.release();
+    if (!get_property_can_revert){ REPORT_PYTHON_ERROR(); return false; }
+    
+    PythonRef result(PyObject_CallFunction(
+        get_property_can_revert,
+        "Os",
+        py_instance,
+        String(p_name).utf8().get_data()
+    ));
+    
+    return result == Py_True;
 }
 
 
@@ -131,8 +149,7 @@ bool PythonScriptInstance::property_get_revert(
 )
 const
 {
-    std::cout << "PythonScriptInstance::property_get_revert" << std::endl;
-    return false;
+    return script->get_property_default_value(p_name, r_ret);
 }
 
 

@@ -45,31 +45,45 @@ def script(obj):
             continue
             
         for k, v in get_annotations(cls, eval_str=True).items():
-            type = v
-            export = _no_export
-            if hasattr(v, "__metadata__"):
-                type = v.__args__[0]
-                for meta in v.__metadata__:
-                    if meta is Export or isinstance(meta, Export):
-                        export = meta
             try:
                 default = getattr(obj, k)
                 has_default = True
             except AttributeError:
                 default = None
                 has_default = False
-            properties[k] = Property(
-                type,
-                _type_to_variant_type(type),
-                cls.__name__,
-                has_default,
-                default,
-                export.hint,
-                export.hint_string,
-                export.usage,
-            )
+            properties[k] = _create_property(cls, k, v, has_default, default)
+            
+    for k in dir(obj):
+        v = getattr(obj, k)
+        if not isinstance(v, property):
+            continue
+        try:
+            return_type = v.fget.__annotations__["return"]
+        except KeyError:
+            continue
+        properties[k] = _create_property(obj, k, return_type, False, None)
     
     return obj
+    
+    
+def _create_property(cls, name, annotation, has_default, default) -> Property:
+    export = _no_export
+    type = annotation
+    if hasattr(annotation, "__metadata__"):
+        type = annotation.__args__[0]
+        for meta in annotation.__metadata__:
+            if meta is Export or isinstance(meta, Export):
+                export = meta
+    return Property(
+        type,
+        _type_to_variant_type(type),
+        cls.__name__,
+        has_default,
+        default,
+        export.hint,
+        export.hint_string,
+        export.usage,
+    )
     
     
 def get_module_script(module):
@@ -94,7 +108,7 @@ def get_property_default_value(
         property = _properties[script][property_name]
     except KeyError:
         return None
-    if property.has_default:
+    if not property.has_default:
         return None
     return VariantWrapper.create_from_type(
         property.default,
@@ -114,6 +128,19 @@ def get_property_value(obj: Any, name: str) -> VariantWrapper | None:
         value,
         property.variant_type,
     )
+    
+def get_property_can_revert(obj: Any, name: str) -> bool:
+    try:
+        v = getattr(obj, name)
+    except AttributeError:
+        return False
+    try:
+        property = _properties[obj.__class__][name]
+    except KeyError:
+        return False
+    if not property.has_default:
+        return False
+    return property.default == v
     
 class _PropertyInfo(NamedTuple):
     type: VariantType
