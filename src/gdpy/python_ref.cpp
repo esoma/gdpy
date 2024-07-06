@@ -26,3 +26,15 @@ void PythonRef::release()
     }
     ref = 0;
 }
+
+
+PythonRef::operator bool() const
+{
+    return ref != 0;
+}
+
+
+PythonRef::operator PyObject *() const
+{
+    return ref;
+}

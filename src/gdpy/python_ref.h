@@ -7,12 +7,15 @@
 class PythonRef
 {
 private:
+    PyObject *ref;
     size_t ref_count;
 public:
     void release();
-    PyObject *ref;
     PythonRef(PyObject *ref, bool strong = true);
     ~PythonRef();
+    
+    operator bool() const;
+    operator PyObject *() const;
 };
 
 #endif 

@@ -9,14 +9,14 @@
 #define REPORT_PYTHON_ERROR()\
     {\
         PythonRef exception(PyErr_GetRaisedException());\
-        if (exception.ref)\
+        if (exception)\
         {\
             PyErr_Clear();\
-            PyErr_DisplayException(exception.ref);\
-            PythonRef exception_str(PyObject_CallFunction(exception.ref, "__str__"));\
-            if (exception_str.ref)\
+            PyErr_DisplayException(exception);\
+            PythonRef exception_str(PyObject_CallFunction(exception, "__str__"));\
+            if (exception_str)\
             {\
-                ERR_PRINT(PyUnicode_AsUTF8(exception_str.ref));\
+                ERR_PRINT(PyUnicode_AsUTF8(exception_str));\
             }\
             else\
             {\
