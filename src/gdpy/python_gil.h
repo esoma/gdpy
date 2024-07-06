@@ -7,10 +7,12 @@
 class PythonGil
 {
 private:
+    bool held;
     PyGILState_STATE gstate;
 public:
     PythonGil();
     ~PythonGil();
+    void release();
 };
 
 #endif

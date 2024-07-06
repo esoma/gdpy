@@ -59,7 +59,7 @@ def script(obj):
         )
     
     return obj
-
+    
     
 def get_module_script(module):
     return _scripts[module.__name__]
@@ -90,15 +90,15 @@ def get_property_default_value(
         property.variant_type,
     )
     
-def get_property_value(obj: Any, name: str) -> VariantWrapper:
+def get_property_value(obj: Any, name: str) -> VariantWrapper | None:
     try:
         value = getattr(obj, name)
     except AttributeError:
-        return VariantWrapper.create_nil()
+        return None
     try:
         property = _properties[obj.__class__][name]
     except KeyError:
-        return VariantWrapper.create_nil()
+        return None
     return VariantWrapper.create_from_type(
         value,
         property.variant_type,

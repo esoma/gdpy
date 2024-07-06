@@ -6,9 +6,19 @@
 PythonGil::PythonGil()
 {
     gstate = PyGILState_Ensure();
+    held = true;
 }
 
 PythonGil::~PythonGil()
 {
-    PyGILState_Release(gstate);
+    release();
+}
+
+void PythonGil::release()
+{
+    if (held)
+    {
+        PyGILState_Release(gstate);
+        held = false;
+    }
 }

@@ -155,6 +155,7 @@ ScriptInstance *PythonScript::instance_create(Object *p_this)
     
     auto instance = memnew(PythonScriptInstance);
     instance->script = Ref<PythonScript>(this);
+    instance->object_instance = p_this;
     Py_INCREF(py_instance);
     instance->py_instance = py_instance;
 

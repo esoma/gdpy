@@ -68,6 +68,11 @@ const
     ));
     get_property_value.release();
     if (!variant_wrapper){ REPORT_PYTHON_ERROR(); return false; }
+    if (variant_wrapper == Py_None)
+    {
+        python_gil.release();
+        return ClassDB::get_property(object_instance, p_name, r_ret);
+    }
     
     auto variant = VariantWrapper_get_variant(variant_wrapper);
     if (!variant){ REPORT_PYTHON_ERROR(); return false; }

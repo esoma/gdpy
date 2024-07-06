@@ -14,6 +14,7 @@ private:
     friend PythonScript;
     Ref<PythonScript> script;
     PyObject *py_instance;
+    Object *object_instance;
 public:
     virtual bool set(const StringName &p_name, const Variant &p_value);
     virtual bool get(const StringName &p_name, Variant &r_ret) const;
