@@ -78,8 +78,8 @@ def _create_property(cls, name, annotation, has_default, default) -> Property:
         type,
         _type_to_variant_type(type),
         cls.__name__,
-        has_default,
-        default,
+        export.has_default,
+        export.default,
         export.hint,
         export.hint_string,
         export.usage,
@@ -164,13 +164,15 @@ def get_properties(module_name: str) -> tuple[_PropertyInfo, ...]:
         ))
     return tuple(property_info)
 
-    
+_no_default = object()
     
 class Export:
 
     hint = PropertyHint.PROPERTY_HINT_NONE
     hint_string = ""
     usage = PropertyUsageFlags.PROPERTY_USAGE_DEFAULT
+    has_default = False
+    default: Any = None
     
     def __init__(
         self,
@@ -178,6 +180,7 @@ class Export:
         hint: PropertyHint | None = None,
         hint_string: str | None = None,
         usage: PropertyUsageFlags | None = None,
+        default: Any = _no_default,
     ):
         if hint is not None:
             self.hint = hint
@@ -185,6 +188,9 @@ class Export:
             self.hint_string = hint_string
         if usage is not None:
             self.usage = usage
+        if default is not _no_default:
+            self.has_default = True
+            self.default = default
 
 _no_export = Export(usage=PropertyUsageFlags.PROPERTY_USAGE_NONE)
 
