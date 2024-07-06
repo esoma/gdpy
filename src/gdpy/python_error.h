@@ -13,7 +13,7 @@
         {\
             PyErr_Clear();\
             PyErr_DisplayException(exception);\
-            PythonRef exception_str(PyObject_CallFunction(exception, "__str__"));\
+            PythonRef exception_str(PyObject_Repr(exception));\
             if (exception_str)\
             {\
                 ERR_PRINT(PyUnicode_AsUTF8(exception_str));\

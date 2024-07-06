@@ -32,9 +32,10 @@ class {{ name }}
     ({{ inherits }})
 {%- endif -%}
 :
-    pass
     
 {% if not inherits %}
+    __gdpy_class_name__ = "{{ name }}"
+    
     _gdpy_variant: VariantWrapper | None = None
     
     def free(self) -> None:

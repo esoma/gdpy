@@ -18,6 +18,7 @@ import importlib
 class Property(NamedTuple):
     type: Any
     variant_type: VariantType
+    class_name: str
     has_default: bool
     default: Any
     hint: PropertyHint
@@ -34,29 +35,39 @@ def script(obj):
     
     properties: dict[str, Property] = {}
     _properties[obj] = properties
-    for k, v in get_annotations(obj, eval_str=True).items():
-        type = v
-        export = _no_export
-        if hasattr(v, "__metadata__"):
-            type = v.__args__[0]
-            for meta in v.__metadata__:
-                if meta is Export or isinstance(meta, Export):
-                    export = meta
+    
+    for cls in reversed(obj.__mro__):
         try:
-            default = getattr(obj, k)
-            has_default = True
+            gdpy_class_name = cls.__gdpy_class_name__
         except AttributeError:
-            default = None
-            has_default = False
-        properties[k] = Property(
-            type,
-            _type_to_variant_type(type),
-            has_default,
-            default,
-            export.hint,
-            export.hint_string,
-            export.usage,
-        )
+            continue
+        if gdpy_class_name != obj.__gdpy_class_name__:
+            continue
+            
+        for k, v in get_annotations(cls, eval_str=True).items():
+            type = v
+            export = _no_export
+            if hasattr(v, "__metadata__"):
+                type = v.__args__[0]
+                for meta in v.__metadata__:
+                    if meta is Export or isinstance(meta, Export):
+                        export = meta
+            try:
+                default = getattr(obj, k)
+                has_default = True
+            except AttributeError:
+                default = None
+                has_default = False
+            properties[k] = Property(
+                type,
+                _type_to_variant_type(type),
+                cls.__name__,
+                has_default,
+                default,
+                export.hint,
+                export.hint_string,
+                export.usage,
+            )
     
     return obj
     
@@ -119,7 +130,7 @@ def get_properties(module_name: str) -> tuple[_PropertyInfo, ...]:
         property_info.append(_PropertyInfo(
             property.variant_type,
             name,
-            script.__name__,
+            property.class_name,
             property.hint,
             property.hint_string,
             property.usage,
