@@ -13,31 +13,34 @@ PythonScriptInstance::set(
     const Variant &p_value
 )
 {
-    PythonGil python_gil;
-    
-    PythonRef script_module(PyImport_ImportModule("gdpy._script"));
-    if (!script_module){ REPORT_PYTHON_ERROR(); return false; }
-    
-    PythonRef set_property_value(PyObject_GetAttrString(
-        script_module,
-        "set_property_value"
-    ));
-    script_module.release();
-    if (!set_property_value){ REPORT_PYTHON_ERROR(); return false; }
-    
-    PythonRef variant_wrapper(VariantWrapper_create(p_value));
-    if (!variant_wrapper){ REPORT_PYTHON_ERROR(); return false; }
-    
-    PythonRef success(PyObject_CallFunction(
-        set_property_value,
-        "OsO",
-        py_instance,
-        String(p_name).utf8().get_data(),
-        (PyObject *)variant_wrapper
-    ));
-    if (!success){ REPORT_PYTHON_ERROR(); return false; }
-    
-    return success == Py_True;
+    {
+        PythonGil python_gil;
+        
+        PythonRef script_module(PyImport_ImportModule("gdpy._script"));
+        if (!script_module){ REPORT_PYTHON_ERROR(); return false; }
+        
+        PythonRef set_property_value(PyObject_GetAttrString(
+            script_module,
+            "set_property_value"
+        ));
+        script_module.release();
+        if (!set_property_value){ REPORT_PYTHON_ERROR(); return false; }
+        
+        PythonRef variant_wrapper(VariantWrapper_create(p_value));
+        if (!variant_wrapper){ REPORT_PYTHON_ERROR(); return false; }
+        
+        PythonRef success(PyObject_CallFunction(
+            set_property_value,
+            "OsO",
+            py_instance,
+            String(p_name).utf8().get_data(),
+            (PyObject *)variant_wrapper
+        ));
+        if (!success){ REPORT_PYTHON_ERROR(); return false; }
+        
+        if (success == Py_True){ return true; }
+    }
+    return ClassDB::set_property(object_instance, p_name, p_value);
 }
 
 
