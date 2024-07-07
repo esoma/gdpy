@@ -221,5 +221,11 @@ def call_method(obj: Any, name: str, args: tuple[VariantWrapper, ...]) -> tuple[
         method = getattr(obj, name)
     except AttributeError:
         return (VariantWrapper.create_nil(), 1)
-    method(*args)
-    return (VariantWrapper.create_nil(), 1)
+    return_value = method(*args)
+    method_annotations = get_annotations(method, eval_str=True)
+    try:
+        return_annotation = method_annotations["return"]
+    except KeyError:
+        return (VariantWrapper.create_nil(), 1)
+    variant_type = _type_to_variant_type(return_annotation)
+    return (VariantWrapper.create_from_type(return_value, variant_type), 0)

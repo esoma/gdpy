@@ -196,7 +196,7 @@ PythonScriptInstance::callp(
         PyTuple_SET_ITEM(args, i, variant_wrapper);
     }
     
-    PythonRef result(PyObject_CallFunction(
+    PythonRef variant_wrapper(PyObject_CallFunction(
         call_method,
         "OsO",
         py_instance,
@@ -205,9 +205,12 @@ PythonScriptInstance::callp(
     ));
     call_method.release();
     args.release();
-    if (!result){ REPORT_PYTHON_ERROR(); return Variant(); }
+    if (!variant_wrapper){ REPORT_PYTHON_ERROR(); return Variant(); }
     
-    return Variant();
+    auto variant = VariantWrapper_get_variant(variant_wrapper);
+    if (!variant){ REPORT_PYTHON_ERROR(); return false; }
+    
+    return *variant;
 }
 
 
