@@ -184,6 +184,8 @@ VariantWrapper_create_from_type(PyObject *self, PyObject *args)
     }
     switch(variant_type)
     {
+        case Variant::Type::BOOL:
+            return VariantWrapper_create_bool(self, py_object);
         case Variant::Type::INT:
             return VariantWrapper_create_int(self, py_object);
     }

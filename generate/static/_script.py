@@ -3,7 +3,7 @@ __all__ = ["Property", "get_properties", "get_module_script", "Export", "script"
 
 from weakref import WeakValueDictionary, WeakKeyDictionary
 from typing import Any
-from inspect import get_annotations
+from inspect import get_annotations, signature
 from typing import NamedTuple
 from typing import Mapping
 from typing import Annotated
@@ -216,16 +216,27 @@ def _name_to_module_name(name):
     name = name.removesuffix(".py")
     return name.replace("/", ".")
     
-def call_method(obj: Any, name: str, args: tuple[VariantWrapper, ...]) -> tuple[Any, int]:
+def call_method(
+        obj: Any,
+        name: str,
+        variant_args: tuple[VariantWrapper, ...]
+) -> tuple[Any, int]:
     try:
         method = getattr(obj, name)
     except AttributeError:
         return (VariantWrapper.create_nil(), 1)
+        
+    args: list[Any] = []
+    method_signature = signature(method, eval_str=True)
+    for variant_arg, parameter in zip(
+        variant_args,
+        method_signature.parameters.values()
+    ):
+        args.append(narrow_variant_to(
+            variant_arg,
+            parameter.annotation,
+        ))
+        
     return_value = method(*args)
-    method_annotations = get_annotations(method, eval_str=True)
-    try:
-        return_annotation = method_annotations["return"]
-    except KeyError:
-        return (VariantWrapper.create_nil(), 1)
-    variant_type = _type_to_variant_type(return_annotation)
+    variant_type = _type_to_variant_type(method_signature.return_annotation)
     return (VariantWrapper.create_from_type(return_value, variant_type), 0)

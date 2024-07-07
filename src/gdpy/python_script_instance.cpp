@@ -194,6 +194,7 @@ PythonScriptInstance::callp(
         PythonRef variant_wrapper(VariantWrapper_create(*p_args[i]));
         if (!variant_wrapper){ REPORT_PYTHON_ERROR(); return Variant(); }
         PyTuple_SET_ITEM(args, i, variant_wrapper);
+        Py_INCREF(variant_wrapper);
     }
     
     PythonRef result(PyObject_CallFunction(
