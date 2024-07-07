@@ -37,6 +37,8 @@ godot_type_name_to_variant_target = {
 def godot_type_name_to_variant_target(t):
     if t.startswith("enum::"):
         return "int"
+    if t.startswith("bitfield::"):
+        return "int"
     return t
     
 godot_value_python = {
@@ -103,16 +105,25 @@ for cls in godot_api["classes"]:
         godot_type_python[reference] = name
         if parts[0] != cls["name"]:
             module = f"gdpy.{parts[0].lower()}"
-            imports.add((module, parts[0]))
+            imports.add((parts[0], module))
     for reference in annotation_references:
         name = reference.split("::")[-1]
         parts = name.split(".")
         godot_type_python[reference] = name
         if parts[0] != cls["name"]:
             module = f"gdpy.{parts[0].lower()}"
-            annotation_imports.add((module, parts[0]))
+            annotation_imports.add((parts[0], module))
     annotation_imports -= imports
+    annotation_imports = dict(annotation_imports)
     
+    #
+    method_names = {m["name"] for m in cls.get("methods", [])}
+    for property in cls.get("properties", []):
+        if "setter" not in property:
+            continue
+        if property["setter"] not in method_names:
+            property["setter"] = f"{cls['inherits']}.{property['setter']}"
+
     with open(build_dir / f"{cls['name'].lower()}.py", "w") as f:
         f.write(class_template.render(
             **({"inherits": None} | cls),

@@ -3,6 +3,7 @@ __all__ = ["narrow_variant_to"]
 
 from _gdpy import VariantWrapper
 from typing import Any
+from enum import IntEnum
 
 class _InvalidConversion(RuntimeError):
     pass
@@ -19,6 +20,14 @@ def create_variant(obj: Any, target: str) -> VariantWrapper:
 def narrow_variant_to(variant: VariantWrapper, target: Any) -> Any:
     if variant is None:
         return None
+        
+    try:
+        is_int_enum = issubclass(target, IntEnum)
+    except TypeError:
+        is_int_enum = False
+    if is_int_enum:
+        return target(variant.narrow_int())
+        
     target = str(target.__name__)
     if target == "Variant":
         target = variant.get_target()

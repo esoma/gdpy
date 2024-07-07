@@ -10,12 +10,12 @@ from gdpy._variant import narrow_variant_to, create_variant
 
 {% if annotation_imports %}
 if TYPE_CHECKING:
-{% for module, name in annotation_imports %}
+{% for name, module in annotation_imports.items() %}
     from {{ module }} import {{ name }}
 {%- endfor %}
 {% endif %}
 
-{% for module, name in imports %}
+{% for name, module in imports %}
 from {{ module }} import {{ name }}
 {%- endfor %}
 
@@ -24,7 +24,7 @@ def narrow_variant_to_python(thing, *args, **kwargs): return thing
 def signal(*args, **kwargs): return object()
 
 {% if inherits %}
-from .{{ inherits.lower() }} import {{ inherits }}
+from gdpy.{{ inherits.lower() }} import {{ inherits }}
 {% endif %}
 
 class {{ name }}
@@ -114,10 +114,15 @@ class {{ name }}
 {%- endif %}
         ))
 {%- if "return_value" in method %}
+{%- with return_type = godot_type_name_to_python(method['return_value']['type']) %}
+{%- if return_type in annotation_imports %}
+        from {{ annotation_imports[return_type] }} import {{ return_type }}
+{%- endif %}
         return narrow_variant_to(
             return_variant,
-            {{ godot_type_name_to_python(method['return_value']['type']) }}
+            {{ return_type }}
         )
+{%- endwith %}
 {%- endif -%}
 {% endif %}
 {%- endfor %}
@@ -134,7 +139,6 @@ class {{ name }}
 {%- endif %}
 {% endfor %}
 
-    """
 {% for property in properties %}
     {{ property["name"] }} = property(
         {{ property["getter"] }},
@@ -143,4 +147,3 @@ class {{ name }}
 {%- endif %}
     )
 {% endfor %}
-    """
