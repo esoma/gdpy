@@ -114,7 +114,6 @@ PythonScriptInstance::validate_property(
 )
 const
 {
-    //std::cout << "PythonScriptInstance::validate_property" << std::endl;
 }
 
 
@@ -175,6 +174,39 @@ PythonScriptInstance::callp(
 )
 {
     r_error.error = Callable::CallError::CALL_ERROR_INVALID_METHOD;
+    
+    PythonGil python_gil;
+    
+    PythonRef script_module(PyImport_ImportModule("gdpy._script"));
+    if (!script_module){ REPORT_PYTHON_ERROR(); return Variant(); }
+    
+    PythonRef call_method(PyObject_GetAttrString(
+        script_module,
+        "call_method"
+    ));
+    script_module.release();
+    if (!call_method){ REPORT_PYTHON_ERROR(); return Variant(); }
+    
+    PythonRef args(PyTuple_New(p_argcount));
+    if (!args){ REPORT_PYTHON_ERROR(); return Variant(); }
+    for (Py_ssize_t i = 0; i < p_argcount; i++)
+    {
+        PythonRef variant_wrapper(VariantWrapper_create(*p_args[i]));
+        if (!variant_wrapper){ REPORT_PYTHON_ERROR(); return Variant(); }
+        PyTuple_SET_ITEM(args, i, variant_wrapper);
+    }
+    
+    PythonRef result(PyObject_CallFunction(
+        call_method,
+        "OsO",
+        py_instance,
+        String(p_method).utf8().get_data(),
+        args
+    ));
+    call_method.release();
+    args.release();
+    if (!result){ REPORT_PYTHON_ERROR(); return Variant(); }
+    
     return Variant();
 }
 

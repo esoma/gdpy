@@ -75,6 +75,7 @@ class {{ name }}
 {% endfor %}
 
 {%- for method in methods %}
+{% if not method["is_virtual"] %}
 {% if method["is_static"] %}
     @staticmethod
 {%- endif %}
@@ -98,11 +99,10 @@ class {{ name }}
     None
 {%- endif -%}
     ):
-{%- if method["is_static"] %}
         method = class_db_get_method("{{ name }}", "{{ method["name"] }}")
         return_variant = call_method_bind(
             method,
-            None, (
+            {% if method["is_static"] %}None{% else %}self._gdpy_variant{% endif %}, (
 {%- for argument in method["arguments"] %}
             create_variant(
                 {{ safe_token(argument["name"]) }},
@@ -113,26 +113,13 @@ class {{ name }}
             *varargs,
 {%- endif %}
         ))
-{% else %}
-        return_variant = self._gdpy_variant.call_method(
-            "{{ method["name"] }}", (
-{%- for argument in method["arguments"] %}
-            create_variant(
-                {{ safe_token(argument["name"]) }},
-                "{{ godot_type_name_to_variant_target(argument["type"]) }}"
-            ),
-{%- endfor %}
-{%- if method["is_vararg"] %}
-            *varargs,
-{%- endif %}
-        ))
-{% endif %}
 {%- if "return_value" in method %}
         return narrow_variant_to(
             return_variant,
             {{ godot_type_name_to_python(method['return_value']['type']) }}
         )
 {%- endif -%}
+{% endif %}
 {%- endfor %}
 
 {% for signal in signals %}

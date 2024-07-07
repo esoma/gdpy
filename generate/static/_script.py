@@ -51,7 +51,7 @@ def script(obj):
             except AttributeError:
                 default = None
                 has_default = False
-            properties[k] = _create_property(cls, k, v, has_default, default)
+            properties[k] = _create_property(cls, k, v, has_default=has_default, default=default)
             
     for k in dir(obj):
         v = getattr(obj, k)
@@ -61,12 +61,12 @@ def script(obj):
             return_type = v.fget.__annotations__["return"]
         except KeyError:
             continue
-        properties[k] = _create_property(obj, k, return_type, False, None)
+        properties[k] = _create_property(obj, k, return_type)
     
     return obj
     
     
-def _create_property(cls, name, annotation, has_default, default) -> Property:
+def _create_property(cls, name, annotation, has_default: bool | None = None, default: Any = None) -> Property:
     export = _no_export
     type = annotation
     if hasattr(annotation, "__metadata__"):
@@ -78,8 +78,8 @@ def _create_property(cls, name, annotation, has_default, default) -> Property:
         type,
         _type_to_variant_type(type),
         cls.__name__,
-        export.has_default,
-        export.default,
+        has_default if has_default is not None else export.has_default,
+        default if has_default is not None else export.default,
         export.hint,
         export.hint_string,
         export.usage,
@@ -215,3 +215,11 @@ def _name_to_module_name(name):
         name = "gdres/" + name.removeprefix("res://")
     name = name.removesuffix(".py")
     return name.replace("/", ".")
+    
+def call_method(obj: Any, name: str, args: tuple[VariantWrapper, ...]) -> tuple[Any, int]:
+    try:
+        method = getattr(obj, name)
+    except AttributeError:
+        return (VariantWrapper.create_nil(), 1)
+    method(*args)
+    return (VariantWrapper.create_nil(), 1)
