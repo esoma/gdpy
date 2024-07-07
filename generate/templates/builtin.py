@@ -5,7 +5,7 @@ __all__ = ["{{ name }}"]
 
 from typing import Any
 from _gdpy import VariantWrapper
-from gdpy._narrow import narrow_variant_to
+from gdpy._variant import narrow_variant_to
 
 class {{ name }}:
     _gdpy_variant: VariantWrapper | None = None

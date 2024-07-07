@@ -209,14 +209,14 @@ String PythonScript::get_class_icon_path() const
 
 bool PythonScript::has_method(const StringName &p_method) const
 {
-    std::cout << "<PythonScript::has_method>" << std::endl;
+    // std::cout << "<PythonScript::has_method>" << std::endl;
     return false;
 }
 
 
 MethodInfo PythonScript::get_method_info(const StringName &p_method) const
 {
-    std::cout << "<PythonScript::get_method_info>" << std::endl;
+    // std::cout << "<PythonScript::get_method_info>" << std::endl;
     return MethodInfo();
 }    
 
@@ -246,14 +246,14 @@ ScriptLanguage *PythonScript::get_language() const {
 
 bool PythonScript::has_script_signal(const StringName &p_signal) const
 {
-    std::cout << "<PythonScript::has_script_signal>" << std::endl;
+    // std::cout << "<PythonScript::has_script_signal>" << std::endl;
     return false;
 }
 
 
 void PythonScript::get_script_signal_list(List<MethodInfo> *r_list) const
 {
-    std::cout << "<PythonScript::get_script_signal_list>" << std::endl;
+    // std::cout << "<PythonScript::get_script_signal_list>" << std::endl;
 }
 
 
@@ -296,7 +296,7 @@ const
 
 void PythonScript::get_script_method_list(List<MethodInfo> *r_list) const
 {
-    std::cout << "<PythonScript::get_script_method_list>" << std::endl;
+    // std::cout << "<PythonScript::get_script_method_list>" << std::endl;
 }
 
 

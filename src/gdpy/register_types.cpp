@@ -21,7 +21,6 @@ void initialize_gdpy_module(ModuleInitializationLevel p_level)
 {
     if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS)
     {
-        std::cout << "init gdpy" << std::endl;
         PyImport_AppendInittab("_gdpy", &PyInit__gdpy);
         Py_Initialize();
         {
@@ -64,7 +63,6 @@ void uninitialize_gdpy_module(ModuleInitializationLevel p_level)
 {
     if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS)
     {
-        std::cout << "deinit gdpy" << std::endl;
         if (python_script_language)
         {
             ScriptServer::unregister_language(python_script_language);

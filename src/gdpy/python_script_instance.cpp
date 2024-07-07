@@ -103,7 +103,7 @@ PythonScriptInstance::get_property_type(
 const
 {
     *r_is_valid = false;
-    std::cout << "PythonScriptInstance::get_property_type" << std::endl;
+    // std::cout << "PythonScriptInstance::get_property_type" << std::endl;
     return Variant::NIL;
 }
 
@@ -154,13 +154,13 @@ const
 
 void PythonScriptInstance::get_method_list(List<MethodInfo> *p_list) const
 {
-    std::cout << "PythonScriptInstance::get_method_list" << std::endl;
+    // std::cout << "PythonScriptInstance::get_method_list" << std::endl;
 }
 
 
 bool PythonScriptInstance::has_method(const StringName &p_method) const
 {
-    std::cout << "PythonScriptInstance::has_method" << std::endl;
+    // std::cout << "PythonScriptInstance::has_method" << std::endl;
     return false;
 }
 
@@ -196,7 +196,7 @@ PythonScriptInstance::callp(
         PyTuple_SET_ITEM(args, i, variant_wrapper);
     }
     
-    PythonRef variant_wrapper(PyObject_CallFunction(
+    PythonRef result(PyObject_CallFunction(
         call_method,
         "OsO",
         py_instance,
@@ -205,9 +205,17 @@ PythonScriptInstance::callp(
     ));
     call_method.release();
     args.release();
-    if (!variant_wrapper){ REPORT_PYTHON_ERROR(); return Variant(); }
+    if (!result){ REPORT_PYTHON_ERROR(); return Variant(); }
     
-    auto variant = VariantWrapper_get_variant(variant_wrapper);
+    {
+        auto py_error = PyTuple_GetItem(result, 1);
+        if (!py_error){ REPORT_PYTHON_ERROR(); return Variant(); }
+        long call_error = PyLong_AsLong(py_error);
+        if (call_error == -1 && PyErr_Occurred()){ REPORT_PYTHON_ERROR(); return Variant(); }
+        r_error.error = (Callable::CallError::Error)call_error;
+    }
+
+    auto variant = VariantWrapper_get_variant(PyTuple_GET_ITEM(result, 0));
     if (!variant){ REPORT_PYTHON_ERROR(); return false; }
     
     return *variant;
@@ -216,7 +224,7 @@ PythonScriptInstance::callp(
 
 void PythonScriptInstance::notification(int p_notification, bool p_reversed)
 {
-    //std::cout << "PythonScriptInstance::notification" << std::endl;
+    // std::cout << "PythonScriptInstance::notification" << std::endl;
 }
 
 
