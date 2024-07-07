@@ -12,6 +12,11 @@ class _InvalidConversion(RuntimeError):
 def create_variant(obj: Any, target: str) -> VariantWrapper:
     if obj is None:
         return VariantWrapper.create_nil()
+    if target == "Variant": 
+        try:
+            return obj.__gdpy_variant__
+        except AttributeError:
+            pass
     try:
         method = getattr(VariantWrapper, f"create_{target}")
     except AttributeError:
@@ -31,7 +36,6 @@ def narrow_variant_to(variant: VariantWrapper, target: Any) -> Any:
         
     if isinstance(target, GenericAlias):
         if target.__origin__ is list:
-            print("list of", target.__args__[0])
             return variant.narrow_list(
                 lambda i: narrow_variant_to(i, target.__args__[0])
             )

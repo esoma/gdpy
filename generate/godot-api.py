@@ -25,6 +25,7 @@ def safe_token(n):
 godot_type_python = {
     "int": "int",
     "String": "str",
+    "StringName": "str",
     "NodePath": "str",
     "bool": "bool",
     "float": "float",
