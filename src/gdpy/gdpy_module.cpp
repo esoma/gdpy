@@ -2,6 +2,8 @@
 #include "gdpy_module.h"
 #include <iostream>
 
+#include "python_ref.h"
+#include "python_error.h"
 #include "core/object/class_db.h"
 #include <vector>
 
@@ -166,6 +168,14 @@ VariantWrapper_create_nil(PyObject *self, PyObject *obj)
 }
 
 static PyObject *
+VariantWrapper_create_NodePath(PyObject *self, PyObject *obj)
+{
+    auto value = PyUnicode_AsUTF8(obj);
+    if (!value){ return 0; }
+    return VariantWrapper_create(Variant(NodePath(value)));
+}
+
+static PyObject *
 VariantWrapper_create_String(PyObject *self, PyObject *obj)
 {
     auto value = PyUnicode_AsUTF8(obj);
@@ -221,6 +231,33 @@ VariantWrapper_narrow_int(VariantWrapper *self, PyObject *unused)
 };
 
 static PyObject *
+VariantWrapper_narrow_list(VariantWrapper *self, PyObject *item_callback)
+{
+    // Variant::get_indexed_size always returns 0 for Array for some reason,
+    // so we just iterate through until we reach out of bounds
+    PythonRef list(PyList_New(0));
+    if (!list){ REPORT_PYTHON_ERROR(); return 0; }
+    
+    for(size_t i = 0;; i++)
+    {
+        bool valid;
+        bool oob;
+        PythonRef item_variant_wrapper(VariantWrapper_create(
+            self->variant->get_indexed(i, valid, oob)
+        ));
+        if (!item_variant_wrapper){ REPORT_PYTHON_ERROR(); return 0; }
+        if (oob){ break; }
+        
+        PythonRef py_item(PyObject_CallOneArg(item_callback, item_variant_wrapper));
+        if (!py_item){ REPORT_PYTHON_ERROR(); return 0; }
+        PyList_Append(list, py_item);
+    }
+    
+    Py_INCREF(list);
+    return list;
+};
+
+static PyObject *
 VariantWrapper_narrow_str(VariantWrapper *self, PyObject *unused)
 {
     return PyUnicode_FromString(
@@ -233,11 +270,13 @@ static PyMethodDef VariantWrapper_method[] = {
     {"create_bool", (PyCFunction)VariantWrapper_create_bool, METH_O | METH_STATIC},
     {"create_int", (PyCFunction)VariantWrapper_create_int, METH_O | METH_STATIC},
     {"create_nil", (PyCFunction)VariantWrapper_create_nil, METH_NOARGS | METH_STATIC},
+    {"create_NodePath", (PyCFunction)VariantWrapper_create_NodePath, METH_O | METH_STATIC},
     {"create_String", (PyCFunction)VariantWrapper_create_String, METH_O | METH_STATIC},
     {"create_from_type", (PyCFunction)VariantWrapper_create_from_type, METH_VARARGS | METH_STATIC},
     {"narrow_bool", (PyCFunction)VariantWrapper_narrow_bool, METH_NOARGS},
     {"narrow_float", (PyCFunction)VariantWrapper_narrow_float, METH_NOARGS},
     {"narrow_int", (PyCFunction)VariantWrapper_narrow_int, METH_NOARGS},
+    {"narrow_list", (PyCFunction)VariantWrapper_narrow_list, METH_O},
     {"narrow_str", (PyCFunction)VariantWrapper_narrow_str, METH_NOARGS},
     {0}
 };
@@ -364,6 +403,7 @@ call_method_bind(PyObject *self, PyObject *args)
     {
         instance = ((VariantWrapper *)py_instance)->variant->operator Object *();
     }
+    
     Callable::CallError error;
     auto ret = method_bind->call(instance, &v_args[0], arg_count, error);
     switch(error.error)

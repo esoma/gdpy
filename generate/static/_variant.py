@@ -4,6 +4,7 @@ __all__ = ["narrow_variant_to"]
 from _gdpy import VariantWrapper
 from typing import Any
 from enum import IntEnum
+from types import GenericAlias
 
 class _InvalidConversion(RuntimeError):
     pass
@@ -27,6 +28,13 @@ def narrow_variant_to(variant: VariantWrapper, target: Any) -> Any:
         is_int_enum = False
     if is_int_enum:
         return target(variant.narrow_int())
+        
+    if isinstance(target, GenericAlias):
+        if target.__origin__ is list:
+            print("list of", target.__args__[0])
+            return variant.narrow_list(
+                lambda i: narrow_variant_to(i, target.__args__[0])
+            )
         
     target = str(target.__name__)
     if target == "Variant":
@@ -54,5 +62,5 @@ def _narrow_variant_to_class(variant: VariantWrapper, target: Any) -> Any:
     except ImportError:
         raise _InvalidConversion()
     cls = getattr(module, target)
-    instance = cls(_gdpy_variant=variant)
+    instance = cls(__gdpy_variant__=variant)
     return instance

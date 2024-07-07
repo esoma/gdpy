@@ -36,12 +36,12 @@ class {{ name }}
 {% if not inherits %}
     __gdpy_class_name__ = "{{ name }}"
     
-    _gdpy_variant: VariantWrapper | None = None
+    __gdpy_variant__: VariantWrapper | None = None
     
     def free(self) -> None:
-        if self._gdpy_variant is not None:
-            free_object(self._gdpy_variant)
-            self._gdpy_variant = None
+        if self.__gdpy_variant__ is not None:
+            free_object(self.__gdpy_variant__)
+            self.__gdpy_variant__ = None
         
     def __del__(self) -> None:
         self.free()
@@ -53,8 +53,8 @@ class {{ name }}
             return repr(self)
         return self.to_string()
         
-    def __init__(self, *, _gdpy_variant: VariantWrapper):
-        self._gdpy_variant = _gdpy_variant
+    def __init__(self, *, __gdpy_variant__: VariantWrapper):
+        self.__gdpy_variant__ = __gdpy_variant__
 {%- endif %}
 
 {% for constant in constants %}
@@ -102,7 +102,7 @@ class {{ name }}
         method = class_db_get_method("{{ name }}", "{{ method["name"] }}")
         return_variant = call_method_bind(
             method,
-            {% if method["is_static"] %}None{% else %}self._gdpy_variant{% endif %}, (
+            {% if method["is_static"] %}None{% else %}self.__gdpy_variant__{% endif %}, (
 {%- for argument in method["arguments"] %}
             create_variant(
                 {{ safe_token(argument["name"]) }},

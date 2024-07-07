@@ -8,7 +8,7 @@ from _gdpy import VariantWrapper
 from gdpy._variant import narrow_variant_to
 
 class {{ name }}:
-    _gdpy_variant: VariantWrapper | None = None
+    __gdpy_variant__: VariantWrapper | None = None
     
     def __str__(self) -> None:
         try:
@@ -17,8 +17,8 @@ class {{ name }}:
             return repr(self)
         return self.to_string()
         
-    def __init__(self, *args, _gdpy_variant: VariantWrapper = None, **kwargs):
-        self._gdpy_variant = _gdpy_variant
+    def __init__(self, *args, __gdpy_variant__: VariantWrapper = None, **kwargs):
+        self.__gdpy_variant__ = __gdpy_variant__
 
 {% for method in methods %}
     def {{ method["name"] }}(
@@ -36,7 +36,7 @@ class {{ name }}:
     None
 {%- endif -%}
     ):
-        return_variant = self._gdpy_variant.call_method(
+        return_variant = self.__gdpy_variant__.call_method(
             "{{ method["name"] }}", [
 {%- for argument in method["arguments"] %}
             {{ safe_token(argument["name"]) }},

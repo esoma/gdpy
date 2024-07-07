@@ -140,7 +140,7 @@ ScriptInstance *PythonScript::instance_create(Object *p_this)
     if (!kwargs){ REPORT_PYTHON_ERROR(); return 0; }
     PythonRef variant_wrapper(VariantWrapper_create(Variant(p_this)));
     if (!variant_wrapper){ REPORT_PYTHON_ERROR(); return 0; }
-    if (PyDict_SetItemString(kwargs, "_gdpy_variant", variant_wrapper) == -1){ REPORT_PYTHON_ERROR(); return 0; }
+    if (PyDict_SetItemString(kwargs, "__gdpy_variant__", variant_wrapper) == -1){ REPORT_PYTHON_ERROR(); return 0; }
     variant_wrapper.release();
     
     PythonRef py_instance(PyObject_Call(

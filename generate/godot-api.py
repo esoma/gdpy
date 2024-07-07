@@ -25,6 +25,7 @@ def safe_token(n):
 godot_type_python = {
     "int": "int",
     "String": "str",
+    "NodePath": "str",
     "bool": "bool",
     "float": "float",
     "Variant": "Variant",
@@ -100,15 +101,27 @@ for cls in godot_api["classes"]:
     imports = set()
     annotation_imports = set()
     for reference in references:
-        name = reference.split("::")[-1]
+        if "::" in reference:
+            base, name = reference.split("::")
+        else:
+            base = None
+            name = reference
         parts = name.split(".")
+        if base == "typedarray":
+            name = f"list[{name}]"
         godot_type_python[reference] = name
         if parts[0] != cls["name"]:
             module = f"gdpy.{parts[0].lower()}"
             imports.add((parts[0], module))
     for reference in annotation_references:
-        name = reference.split("::")[-1]
+        if "::" in reference:
+            base, name = reference.split("::")
+        else:
+            base = None
+            name = reference
         parts = name.split(".")
+        if base == "typedarray":
+            name = f"list[{name}]"
         godot_type_python[reference] = name
         if parts[0] != cls["name"]:
             module = f"gdpy.{parts[0].lower()}"
